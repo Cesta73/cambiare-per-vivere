@@ -1,0 +1,271 @@
+import { useState } from 'react';
+import { ArrowLeft, FileText, Download, Printer, CheckSquare, Square } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
+import { supabase } from '../../lib/supabase';
+import { formatDate, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
+
+interface Props { onBack: () => void; }
+
+type ReportSection = 'measurements' | 'activity' | 'sleep' | 'medications' | 'mood' | 'notes';
+
+export function ReportPage({ onBack }: Props) {
+  const { user, isDemo, profile, demoData, showToast } = useApp();
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [sections, setSections] = useState<Set<ReportSection>>(new Set(['measurements', 'activity', 'sleep', 'medications', 'mood']));
+  const [questions, setQuestions] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<any>(null);
+
+  const toggleSection = (s: ReportSection) => {
+    setSections(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  };
+
+  const generateReport = async () => {
+    setLoading(true);
+    const data: any = {
+      profile: { name: profile?.display_name, start_date: profile?.start_date, start_weight: profile?.start_weight },
+      period: { from: dateFrom, to: dateTo },
+      generated_at: new Date().toISOString(),
+      questions: questions || null,
+    };
+
+    if (isDemo) {
+      if (sections.has('measurements')) {
+        data.measurements = demoData.measurements.filter(m => m.measured_at >= dateFrom && m.measured_at <= dateTo);
+      }
+      if (sections.has('activity')) {
+        data.activities = demoData.activities.filter(a => a.activity_date >= dateFrom && a.activity_date <= dateTo);
+      }
+    } else if (user) {
+      if (sections.has('measurements')) {
+        const { data: measData } = await supabase.from('body_measurements').select('*').eq('user_id', user.id).gte('measured_at', dateFrom).lte('measured_at', dateTo).order('measured_at');
+        data.measurements = measData ?? [];
+      }
+      if (sections.has('activity')) {
+        const { data: actData } = await supabase.from('activity_entries').select('*').eq('user_id', user.id).gte('activity_date', dateFrom).lte('activity_date', dateTo).order('activity_date');
+        data.activities = actData ?? [];
+      }
+      if (sections.has('sleep')) {
+        const { data: sleepData } = await supabase.from('sleep_entries').select('*').eq('user_id', user.id).gte('sleep_date', dateFrom).lte('sleep_date', dateTo).order('sleep_date');
+        data.sleep = sleepData ?? [];
+      }
+      if (sections.has('medications')) {
+        const { data: medData } = await supabase.from('medication_logs').select('*').eq('user_id', user.id).gte('log_date', dateFrom).lte('log_date', dateTo).order('log_date');
+        data.medications = medData ?? [];
+      }
+      if (sections.has('mood')) {
+        const { data: moodData } = await supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('checkin_date', dateFrom).lte('checkin_date', dateTo).order('checkin_date');
+        data.mood = moodData ?? [];
+      }
+    }
+
+    setReportData(data);
+    setLoading(false);
+    showToast('Report generato!', 'success');
+  };
+
+  const printReport = () => {
+    if (!reportData) return;
+    const lines: string[] = [
+      `CAMBIARE PER VIVERE — REPORT PERSONALE`,
+      ``,
+      `Nome: ${reportData.profile?.name ?? '—'}`,
+      `Periodo: ${formatDate(reportData.period.from)} – ${formatDate(reportData.period.to)}`,
+      `Generato il: ${new Date(reportData.generated_at).toLocaleDateString('it-IT')}`,
+      ``,
+      `NOTA: Questi dati sono stati generati dall'applicazione personale "Cambiare per Vivere".`,
+      `Sono dati di auto-monitoraggio e non costituiscono documentazione clinica.`,
+      ``,
+    ];
+
+    if (reportData.measurements?.length) {
+      lines.push('MISURAZIONI CORPOREE');
+      reportData.measurements.forEach((m: any) => {
+        lines.push(`${formatDate(m.measured_at)}: Peso ${m.weight_kg ?? '—'} kg, Addome ${m.waist_cm ?? '—'} cm, Collo ${m.neck_cm ?? '—'} cm${m.notes ? ` — ${m.notes}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.activities?.length) {
+      lines.push('ATTIVITÀ FISICA');
+      reportData.activities.forEach((a: any) => {
+        lines.push(`${formatDate(a.activity_date)}: ${a.activity_name ?? ACTIVITY_TYPE_LABELS[a.activity_type]} — ${a.duration_minutes} min${a.perceived_effort ? `, sforzo ${a.perceived_effort}/10` : ''}${a.pain_or_difficulty ? ` — ${a.pain_or_difficulty}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.mood?.length) {
+      lines.push('UMORE ED ENERGIA');
+      reportData.mood.forEach((c: any) => {
+        lines.push(`${formatDate(c.checkin_date)}: Umore ${c.mood_score ?? '—'}/5, Energia ${c.energy_score ?? '—'}/5, Motivazione ${c.motivation_score ?? '—'}/5, Stress ${c.stress_score ?? '—'}/5`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.questions) {
+      lines.push('DOMANDE PER I PROFESSIONISTI');
+      lines.push(reportData.questions);
+      lines.push('');
+    }
+
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(`<pre style="font-family:sans-serif;padding:2rem;max-width:700px;line-height:1.6;">${lines.join('\n')}</pre>`);
+      w.print();
+    }
+  };
+
+  const exportCSV = () => {
+    if (!reportData) return;
+    const rows: string[][] = [['Data', 'Tipo', 'Peso (kg)', 'Addome (cm)', 'Collo (cm)', 'Durata attività (min)', 'Umore', 'Energia']];
+
+    const allDates = new Set([
+      ...(reportData.measurements?.map((m: any) => m.measured_at) ?? []),
+      ...(reportData.activities?.map((a: any) => a.activity_date) ?? []),
+      ...(reportData.mood?.map((c: any) => c.checkin_date) ?? []),
+    ]);
+
+    Array.from(allDates).sort().forEach(date => {
+      const meas = reportData.measurements?.find((m: any) => m.measured_at === date);
+      const act = reportData.activities?.filter((a: any) => a.activity_date === date);
+      const mood = reportData.mood?.find((c: any) => c.checkin_date === date);
+      const totalActMin = act?.reduce((s: number, a: any) => s + a.duration_minutes, 0) ?? '';
+      rows.push([
+        formatDate(date),
+        'giornata',
+        meas?.weight_kg ?? '',
+        meas?.waist_cm ?? '',
+        meas?.neck_cm ?? '',
+        totalActMin,
+        mood?.mood_score ?? '',
+        mood?.energy_score ?? '',
+      ]);
+    });
+
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cpv-report-${dateFrom}-${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV esportato!', 'success');
+  };
+
+  const SECTION_OPTIONS: { id: ReportSection; label: string }[] = [
+    { id: 'measurements', label: 'Peso e circonferenze' },
+    { id: 'activity', label: 'Attività fisica' },
+    { id: 'sleep', label: 'Sonno e CPAP' },
+    { id: 'medications', label: 'Aderenza ai promemoria' },
+    { id: 'mood', label: 'Umore ed energia' },
+  ];
+
+  return (
+    <div className="space-y-4 pb-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors">
+          <ArrowLeft size={20} className="text-warm-gray-700" />
+        </button>
+        <h1 className="section-title flex-1">Report per i professionisti</h1>
+      </div>
+
+      <div className="card bg-petrol-50 border-petrol-200">
+        <p className="text-sm text-petrol-700">Genera un report dei tuoi dati da condividere col tuo team sanitario. Scegli tu cosa includere.</p>
+      </div>
+
+      {/* Date range */}
+      <div className="card space-y-3">
+        <h2 className="font-semibold text-warm-gray-800">Periodo</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Dal</label>
+            <input type="date" className="input-field" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Al</label>
+            <input type="date" className="input-field" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div className="card space-y-3">
+        <h2 className="font-semibold text-warm-gray-800">Dati da includere</h2>
+        {SECTION_OPTIONS.map(s => (
+          <button key={s.id} onClick={() => toggleSection(s.id)}
+            className="w-full flex items-center gap-3 py-1 text-left">
+            {sections.has(s.id)
+              ? <CheckSquare size={20} className="text-sage-600 flex-shrink-0" />
+              : <Square size={20} className="text-warm-gray-300 flex-shrink-0" />}
+            <span className="text-sm text-warm-gray-700">{s.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Questions */}
+      <div className="card">
+        <h2 className="font-semibold text-warm-gray-800 mb-2">Domande per i professionisti</h2>
+        <textarea
+          className="input-field h-24 resize-none text-sm"
+          placeholder="Es. Ho notato più fame nei giorni di turno notturno. Cosa mi consigliate?"
+          value={questions}
+          onChange={e => setQuestions(e.target.value)}
+        />
+      </div>
+
+      <button onClick={generateReport} disabled={loading} className="btn-primary w-full">
+        {loading ? 'Generazione...' : 'Genera report'}
+      </button>
+
+      {/* Preview + Export */}
+      {reportData && (
+        <div className="card space-y-4">
+          <h2 className="font-semibold text-warm-gray-800">Anteprima report</h2>
+
+          <div className="bg-warm-gray-50 rounded-xl p-4 text-sm space-y-2">
+            <p><strong>Periodo:</strong> {formatDate(reportData.period.from)} – {formatDate(reportData.period.to)}</p>
+            {reportData.measurements?.length > 0 && (
+              <p><strong>Misurazioni:</strong> {reportData.measurements.length} registrazioni</p>
+            )}
+            {reportData.activities?.length > 0 && (
+              <p><strong>Attività:</strong> {reportData.activities.length} sessioni, {reportData.activities.reduce((s: number, a: any) => s + a.duration_minutes, 0)} min totali</p>
+            )}
+            {reportData.mood?.length > 0 && (
+              <p><strong>Check-in:</strong> {reportData.mood.length} giornate tracciate</p>
+            )}
+            {reportData.questions && (
+              <div>
+                <p className="font-semibold">Domande:</p>
+                <p className="text-warm-gray-600">{reportData.questions}</p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-warm-gray-400">
+            Nota: questi dati sono auto-riferiti. Non costituiscono documentazione clinica.
+          </p>
+
+          <div className="flex gap-3">
+            <button onClick={printReport} className="btn-secondary flex-1 flex items-center justify-center gap-1 text-sm">
+              <Printer size={16} /> Stampa
+            </button>
+            <button onClick={exportCSV} className="btn-primary flex-1 flex items-center justify-center gap-1 text-sm">
+              <Download size={16} /> CSV
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
