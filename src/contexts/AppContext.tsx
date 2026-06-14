@@ -125,7 +125,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     return { error: error?.message ?? null };
   };
 
