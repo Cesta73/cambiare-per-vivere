@@ -22,6 +22,12 @@ npm run build
 
 Le variabili richieste sono `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
 
+## Pubblicazione
+
+Ogni aggiornamento del ramo `main` viene controllato, costruito e pubblicato
+automaticamente su GitHub Pages dal workflow `Verifica e pubblica l'app`.
+Le variabili Supabase sono conservate come GitHub Actions secrets.
+
 ## Pulizia dati
 
 La migrazione `20260614120000_reset_personal_app_data.sql` elimina tutti i dati
