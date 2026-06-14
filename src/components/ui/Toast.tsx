@@ -1,4 +1,4 @@
-import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 
 export function ToastContainer() {

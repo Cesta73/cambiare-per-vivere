@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Configurazione Supabase mancante: controlla VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type Database = {
@@ -27,6 +31,8 @@ export type Database = {
       personal_goals: { Row: PersonalGoal; Insert: Partial<PersonalGoal>; Update: Partial<PersonalGoal> };
       work_shifts: { Row: WorkShift; Insert: Partial<WorkShift>; Update: Partial<WorkShift> };
       hunger_satiety_entries: { Row: HungerSatietyEntry; Insert: Partial<HungerSatietyEntry>; Update: Partial<HungerSatietyEntry> };
+      camino_settings: { Row: CaminoSettings; Insert: Partial<CaminoSettings>; Update: Partial<CaminoSettings> };
+      camino_workouts: { Row: CaminoWorkout; Insert: Partial<CaminoWorkout>; Update: Partial<CaminoWorkout> };
     };
   };
 };
@@ -301,6 +307,41 @@ export interface HungerSatietyEntry {
   post_stopped_at_right_time: boolean | null;
   post_notes: string | null;
   shift_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaminoSettings {
+  id: string;
+  user_id: string;
+  target_name: string;
+  target_date: string;
+  target_distance_km: number;
+  weekly_training_days: number;
+  current_comfortable_distance_km: number | null;
+  current_challenging_distance_km: number | null;
+  current_max_distance_km: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaminoWorkout {
+  id: string;
+  user_id: string;
+  planned_date: string;
+  workout_type: 'easy_walk' | 'long_walk' | 'hills' | 'strength' | 'mobility' | 'recovery' | 'test_walk' | 'other';
+  title: string;
+  planned_distance_km: number | null;
+  planned_duration_minutes: number | null;
+  actual_distance_km: number | null;
+  actual_duration_minutes: number | null;
+  steps: number | null;
+  perceived_effort: number | null;
+  pain_or_difficulty: string | null;
+  notes: string | null;
+  completed: boolean;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

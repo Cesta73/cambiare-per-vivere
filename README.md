@@ -1,3 +1,28 @@
-# Cambiare_per_Vivere
+# Cambiare per Vivere
 
-[![Open in Bolt](https://bolt.new/static/open-in-bolt.svg)](https://bolt.new/~/sb1-xnstfsnx)
+Applicazione personale per monitoraggio del benessere, pianificazione, diario,
+Sentiero del Dharma e preparazione al Cammino di Santiago.
+
+## Accesso
+
+L'app e pensata per un solo utente esistente. La registrazione pubblica non e
+esposta nell'interfaccia. In Supabase va inoltre disabilitata l'opzione:
+
+`Authentication > Providers > Email > Allow new users to sign up`
+
+## Sviluppo
+
+```bash
+npm ci
+npm run dev
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Le variabili richieste sono `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+
+## Pulizia dati
+
+La migrazione `20260614120000_reset_personal_app_data.sql` elimina tutti i dati
+applicativi ma conserva l'utente in `auth.users`. Va applicata una sola volta.

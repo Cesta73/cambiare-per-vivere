@@ -9,7 +9,7 @@ import type { DailyCheckin } from '../../lib/supabase';
 interface Props { checkin: DailyCheckin | null; onClose: () => void; }
 
 export function QuickMoodModal({ checkin, onClose }: Props) {
-  const { user, isDemo, showToast } = useApp();
+  const { user, showToast } = useApp();
   const [mood, setMood] = useState<number | null>(checkin?.mood_score ?? null);
   const [energy, setEnergy] = useState<number | null>(checkin?.energy_score ?? null);
   const [motivation, setMotivation] = useState<number | null>(checkin?.motivation_score ?? null);
@@ -18,15 +18,23 @@ export function QuickMoodModal({ checkin, onClose }: Props) {
 
   const handleSave = async () => {
     setLoading(true);
-    if (!isDemo && user) {
-      await supabase.from('daily_checkins').upsert({
+    if (!user) {
+      showToast('Sessione non disponibile.', 'error');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('daily_checkins').upsert({
         user_id: user.id,
         checkin_date: todayISO(),
         mood_score: mood,
         energy_score: energy,
         motivation_score: motivation,
         stress_score: stress,
-      }, { onConflict: 'user_id,checkin_date' });
+    }, { onConflict: 'user_id,checkin_date' });
+    if (error) {
+      showToast(`Stato non salvato: ${error.message}`, 'error');
+      setLoading(false);
+      return;
     }
     showToast('Come stai salvato!', 'success');
     setLoading(false);

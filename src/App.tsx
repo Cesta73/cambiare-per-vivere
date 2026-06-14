@@ -7,10 +7,13 @@ import { SettimanaPage } from './components/settimana/SettimanaPage';
 import { DiarioPage } from './components/diario/DiarioPage';
 import { ProgressiPage } from './components/progressi/ProgressiPage';
 import { AltroPage } from './components/altro/AltroPage';
+import { CamminoPage } from './components/cammino/CamminoPage';
+import { RitrovaIlCentroPage } from './components/centro/RitrovaIlCentroPage';
 import { ToastContainer } from './components/ui/Toast';
+import { ReminderWatcher } from './components/reminders/ReminderWatcher';
 
 function AppContent() {
-  const { user, profile, isDemo, isLoading, activeTab } = useApp();
+  const { user, profile, isDemo, isLoading, activeTab, setActiveTab } = useApp();
 
   if (isLoading) {
     return (
@@ -34,9 +37,12 @@ function AppContent() {
         {activeTab === 'diario' && <DiarioPage />}
         {activeTab === 'progressi' && <ProgressiPage />}
         {activeTab === 'altro' && <AltroPage />}
+        {activeTab === 'cammino' && <CamminoPage onBack={() => setActiveTab('oggi')} />}
+        {activeTab === 'dharma' && <RitrovaIlCentroPage onBack={() => setActiveTab('oggi')} />}
       </main>
       <BottomNav />
       <ToastContainer />
+      <ReminderWatcher />
     </div>
   );
 }

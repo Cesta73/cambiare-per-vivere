@@ -8,6 +8,18 @@ interface Props { onBack: () => void; }
 
 type ReportSection = 'measurements' | 'activity' | 'sleep' | 'medications' | 'mood' | 'notes';
 
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const escapeCsvCell = (value: unknown) => {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
 export function ReportPage({ onBack }: Props) {
   const { user, isDemo, profile, demoData, showToast } = useApp();
   const [dateFrom, setDateFrom] = useState(() => {
@@ -120,7 +132,8 @@ export function ReportPage({ onBack }: Props) {
 
     const w = window.open('', '_blank');
     if (w) {
-      w.document.write(`<pre style="font-family:sans-serif;padding:2rem;max-width:700px;line-height:1.6;">${lines.join('\n')}</pre>`);
+      w.document.write(`<pre style="font-family:sans-serif;padding:2rem;max-width:700px;line-height:1.6;">${escapeHtml(lines.join('\n'))}</pre>`);
+      w.document.close();
       w.print();
     }
   };
@@ -152,8 +165,8 @@ export function ReportPage({ onBack }: Props) {
       ]);
     });
 
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = rows.map(r => r.map(escapeCsvCell).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

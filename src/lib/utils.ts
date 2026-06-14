@@ -21,7 +21,7 @@ export function formatDateShort(dateStr: string): string {
 }
 
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+  return dateToISO(new Date());
 }
 
 export function getWeekStart(date: Date = new Date()): Date {
@@ -42,7 +42,10 @@ export function getWeekDays(weekStart: Date): Date[] {
 }
 
 export function dateToISO(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function calculateBMI(weightKg: number, heightCm: number): number {
@@ -109,16 +112,16 @@ export const CATEGORY_LABELS: Record<string, string> = {
 export const CATEGORY_ORDER = ['frutta', 'verdura', 'proteine', 'latticini', 'cereali', 'dispensa', 'surgelati', 'bevande', 'altro'];
 
 export const MOTIVATIONAL_PHRASES = [
-  'Ogni piccolo passo conta. Sei sulla strada giusta.',
-  'Il cambiamento richiede tempo. Abbi pazienza con te stesso.',
-  'Non si tratta di perfezione, ma di costanza.',
-  'Ogni giornata è una nuova opportunità di cura di sé.',
-  'Stai costruendo qualcosa di importante, mattone dopo mattone.',
-  'La costanza è più potente dell\'intensità.',
-  'Ascolta il tuo corpo. Sa cosa ti serve.',
-  'Anche una piccola buona abitudine fa la differenza.',
-  'Il percorso è tuo. Procedi al tuo ritmo.',
-  'Ogni giorno in cui ti prendi cura di te è una vittoria.',
+  'Come il loto cresce dal fango, ogni difficoltà può nutrire il cammino.',
+  'Il passo presente è l’unico passo che puoi davvero compiere.',
+  'La costanza gentile vale più della perfezione.',
+  'Prenderti cura del corpo è anche prenderti cura della mente.',
+  'Osserva senza giudicare, poi scegli il prossimo piccolo passo.',
+  'Anche il viaggio più lungo è fatto di passi presenti.',
+  'La pazienza non è attesa passiva: è continuare con saggezza.',
+  'Respira, ascolta, riprendi il cammino.',
+  'La mente torna dove la conduci con gentilezza.',
+  'Oggi coltiva una causa buona, senza pretendere subito il frutto.',
 ];
 
 export function getTodayPhrase(): string {

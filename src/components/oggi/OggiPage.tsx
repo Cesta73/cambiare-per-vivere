@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  Scale, Utensils, Droplets, Dumbbell, Heart, Pill, BookOpen, Target,
-  Plus, Check, Sun, Wind, Footprints, ChevronRight, Smile, Frown, Meh, Sparkles
+  Scale, Utensils, Droplets, Dumbbell, Heart, BookOpen, Target,
+  Check, Wind, Footprints, Sparkles, Route
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { DailyCheckin, HabitDefinition, HabitLog, WorkShift } from '../../lib/supabase';
@@ -17,7 +18,7 @@ import { QuickMealModal } from './QuickMealModal';
 
 const today = todayISO();
 
-const HABIT_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
+const HABIT_ICONS: Record<string, LucideIcon> = {
   droplets: Droplets,
   wind: Wind,
   footprints: Footprints,
@@ -128,6 +129,8 @@ export function OggiPage() {
     { id: 'activity', icon: Dumbbell, label: 'Attività', color: 'bg-green-50 text-green-700' },
     { id: 'mood', icon: Heart, label: 'Come sto', color: 'bg-rose-50 text-rose-700' },
     { id: 'diary', icon: BookOpen, label: 'Diario', color: 'bg-warm-gray-50 text-warm-gray-700' },
+    { id: 'dharma', icon: Sparkles, label: 'Dharma', color: 'bg-amber-50 text-amber-800' },
+    { id: 'cammino', icon: Route, label: 'Mio Cammino', color: 'bg-orange-50 text-orange-800' },
   ] as const;
 
   if (loading) {
@@ -206,7 +209,7 @@ export function OggiPage() {
           ].map(p => (
             <button
               key={p.key}
-              onClick={() => setActiveTab('altro')}
+              onClick={() => setActiveTab('dharma')}
               className="bg-white/70 hover:bg-white text-left rounded-xl px-3 py-2.5 transition-all active:scale-98 border border-sage-100"
             >
               <p className="text-xs font-semibold text-warm-gray-800">{p.label}</p>
@@ -215,7 +218,7 @@ export function OggiPage() {
           ))}
         </div>
         <button
-          onClick={() => setActiveTab('altro')}
+          onClick={() => setActiveTab('dharma')}
           className="mt-2 w-full text-xs text-sage-600 hover:text-sage-800 font-medium text-center py-1"
         >
           Apri Ritrova il Centro →
@@ -225,15 +228,17 @@ export function OggiPage() {
       {/* Quick Actions */}
       <div>
         <h2 className="section-title mb-3 px-1">Azioni rapide</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {quickActions.map(({ id, icon: Icon, label, color }) => (
             <button
               key={id}
               onClick={() => {
                 if (id === 'diary') setActiveTab('diario');
+                else if (id === 'dharma') setActiveTab('dharma');
+                else if (id === 'cammino') setActiveTab('cammino');
                 else setModal(id as typeof modal);
               }}
-              className={`${color} rounded-2xl p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform`}
+              className={`${color} rounded-2xl p-5 min-h-24 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform`}
             >
               <Icon size={24} />
               <span className="text-xs font-semibold">{label}</span>

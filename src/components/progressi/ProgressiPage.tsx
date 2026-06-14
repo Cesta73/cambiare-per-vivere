@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Droplets, Activity, Moon } from 'lucide-react';
+import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Droplets, Activity, Moon, Bell } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend
@@ -7,7 +7,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { BodyMeasurement, ActivityEntry, HydrationEntry, SleepEntry, DailyCheckin } from '../../lib/supabase';
-import { formatDateShort, formatDate, calculateBMI, todayISO } from '../../lib/utils';
+import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 
@@ -21,6 +21,21 @@ export function ProgressiPage() {
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [loading, setLoading] = useState(true);
   const [addWeightModal, setAddWeightModal] = useState(false);
+
+  const scheduleWeeklyMeasurement = async () => {
+    if (!user) return;
+    const next = new Date();
+    next.setDate(next.getDate() + ((7 - next.getDay()) % 7 || 7));
+    next.setHours(8, 0, 0, 0);
+    const { error } = await supabase.from('reminders').insert({
+      user_id: user.id,
+      title: 'Pesata e misure settimanali',
+      entity_type: 'measurement',
+      remind_at: next.toISOString(),
+      repeat_rule: 'weekly',
+    });
+    showToast(error ? `Promemoria non salvato: ${error.message}` : 'Promemoria settimanale impostato per domenica alle 08:00.', error ? 'error' : 'success');
+  };
 
   useEffect(() => {
     loadData();
@@ -66,11 +81,14 @@ export function ProgressiPage() {
 
   const activityByWeek = activities.reduce<Record<string, number>>((acc, a) => {
     const d = new Date(a.activity_date + 'T12:00:00');
-    const weekKey = formatDateShort(a.activity_date);
+    const weekKey = dateToISO(getWeekStart(d));
     acc[weekKey] = (acc[weekKey] ?? 0) + a.duration_minutes;
     return acc;
   }, {});
-  const activityData = Object.entries(activityByWeek).slice(-8).map(([date, min]) => ({ date, min }));
+  const activityData = Object.entries(activityByWeek)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-8)
+    .map(([date, min]) => ({ date: formatDateShort(date), min }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -98,6 +116,9 @@ export function ProgressiPage() {
           <Plus size={16} /> Misura
         </button>
       </div>
+      <button onClick={scheduleWeeklyMeasurement} className="btn-secondary w-full flex items-center justify-center gap-2 text-sm">
+        <Bell size={16} /> Promemoria settimanale per peso e misure
+      </button>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-warm-gray-100 rounded-xl p-1">

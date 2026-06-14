@@ -7,7 +7,7 @@ import { todayISO } from '../../lib/utils';
 interface Props { onClose: () => void; }
 
 export function QuickWeightModal({ onClose }: Props) {
-  const { user, isDemo, showToast } = useApp();
+  const { user, showToast } = useApp();
   const [weight, setWeight] = useState('');
   const [waist, setWaist] = useState('');
   const [neck, setNeck] = useState('');
@@ -17,15 +17,23 @@ export function QuickWeightModal({ onClose }: Props) {
   const handleSave = async () => {
     if (!weight && !waist && !neck) return;
     setLoading(true);
-    if (!isDemo && user) {
-      await supabase.from('body_measurements').insert({
+    if (!user) {
+      showToast('Sessione non disponibile.', 'error');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('body_measurements').insert({
         user_id: user.id,
         measured_at: todayISO(),
         weight_kg: weight ? parseFloat(weight) : null,
         waist_cm: waist ? parseFloat(waist) : null,
         neck_cm: neck ? parseFloat(neck) : null,
         notes: notes || null,
-      });
+    });
+    if (error) {
+      showToast(`Misurazione non salvata: ${error.message}`, 'error');
+      setLoading(false);
+      return;
     }
     showToast('Misurazione salvata!', 'success');
     setLoading(false);

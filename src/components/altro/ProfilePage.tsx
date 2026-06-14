@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Save, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Bell } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import { calculateBMI } from '../../lib/utils';
@@ -26,7 +26,7 @@ export function ProfilePage({ onBack }: Props) {
 
   const saveProfile = async () => {
     setSaving(true);
-    await updateProfile({
+    const { error } = await updateProfile({
       display_name: displayName || null,
       height_cm: heightCm ? parseFloat(heightCm) : null,
       goal_description: goalDesc || null,
@@ -34,7 +34,7 @@ export function ProfilePage({ onBack }: Props) {
       hide_bmi: hideBmi,
       uses_cpap: usesCpap,
     });
-    showToast('Profilo aggiornato!', 'success');
+    showToast(error ? `Profilo non aggiornato: ${error}` : 'Profilo aggiornato!', error ? 'error' : 'success');
     setSaving(false);
   };
 
@@ -75,6 +75,15 @@ export function ProfilePage({ onBack }: Props) {
     if (!confirm('Ultima conferma: eliminare TUTTI i tuoi dati?')) return;
     if (isDemo) { showToast('In modalità demo non è necessario eliminare l\'account.', 'info'); return; }
     showToast('Contatta il supporto per eliminare il tuo account.', 'info');
+  };
+
+  const enableNotifications = async () => {
+    if (!('Notification' in window)) {
+      showToast('Le notifiche non sono supportate da questo browser.', 'error');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    showToast(permission === 'granted' ? 'Notifiche attivate.' : 'Permesso notifiche non concesso.', permission === 'granted' ? 'success' : 'info');
   };
 
   return (
@@ -166,6 +175,12 @@ export function ProfilePage({ onBack }: Props) {
       </button>
 
       {/* Data & Privacy */}
+      <div className="card space-y-3">
+        <h2 className="font-semibold text-warm-gray-800">Promemoria</h2>
+        <p className="text-sm text-warm-gray-500">Le notifiche funzionano quando l’app è aperta o attiva nel browser. Gli eventi importanti potranno anche essere esportati nel calendario.</p>
+        <button onClick={enableNotifications} className="btn-secondary w-full text-sm flex items-center justify-center gap-2"><Bell size={16} /> Attiva notifiche</button>
+      </div>
+
       <div className="card space-y-3">
         <h2 className="font-semibold text-warm-gray-800">Privacy e dati</h2>
         <p className="text-sm text-warm-gray-500">I tuoi dati sono privati e accessibili solo a te tramite il tuo account protetto.</p>
