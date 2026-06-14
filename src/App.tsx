@@ -26,8 +26,22 @@ function AppContent() {
     );
   }
 
-  if (!user && !isDemo) return <AuthScreen />;
-  if (!profile) return <Onboarding />;
+  if (!user && !isDemo) {
+    return (
+      <>
+        <AuthScreen />
+        <ToastContainer />
+      </>
+    );
+  }
+  if (!profile) {
+    return (
+      <>
+        <Onboarding />
+        <ToastContainer />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream-50">

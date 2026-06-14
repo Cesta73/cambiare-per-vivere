@@ -8,14 +8,22 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+    setErrorMessage('');
     setLoading(true);
     const { error } = await signIn(email, password);
     setLoading(false);
-    if (error) showToast(error, 'error');
+    if (error) {
+      const message = error === 'Invalid login credentials'
+        ? 'Email o password non corretti. Controlla di non aver inserito spazi.'
+        : error;
+      setErrorMessage(message);
+      showToast(message, 'error');
+    }
   };
 
   return (
@@ -66,6 +74,11 @@ export function AuthScreen() {
             <button type="submit" disabled={loading || !email || !password} className="btn-primary w-full">
               {loading ? 'Accesso...' : 'Accedi'}
             </button>
+            {errorMessage && (
+              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                {errorMessage}
+              </p>
+            )}
           </form>
         </div>
       </div>
