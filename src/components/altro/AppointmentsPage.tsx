@@ -30,6 +30,8 @@ export function AppointmentsPage({ onBack }: Props) {
     type: 'medical',
     location: '',
     notes: '',
+    reminder_day_before: true,
+    reminder_two_hours: true,
   });
 
   const today = todayISO();
@@ -82,7 +84,23 @@ export function AppointmentsPage({ onBack }: Props) {
       notes: form.notes || null,
       is_past: isPast,
     }).select().maybeSingle();
-    if (data) setAppointments(prev => [...prev, data].sort((a, b) => a.appointment_date.localeCompare(b.appointment_date)));
+    if (data) {
+      setAppointments(prev => [...prev, data].sort((a, b) => a.appointment_date.localeCompare(b.appointment_date)));
+      const appointmentAt = new Date(`${form.appointment_date}T${form.appointment_time || '09:00'}:00`);
+      const reminders = [];
+      if (form.reminder_day_before) reminders.push({ label: 'domani', date: new Date(appointmentAt.getTime() - 86400000) });
+      if (form.reminder_two_hours) reminders.push({ label: 'tra due ore', date: new Date(appointmentAt.getTime() - 7200000) });
+      const futureReminders = reminders.filter(reminder => reminder.date.getTime() > Date.now());
+      if (futureReminders.length) {
+        await supabase.from('reminders').insert(futureReminders.map(reminder => ({
+          user_id: user.id,
+          title: `${form.title}: ${reminder.label}`,
+          entity_type: 'appointment',
+          entity_id: data.id,
+          remind_at: reminder.date.toISOString(),
+        })));
+      }
+    }
     setAddModal(false);
     showToast('Appuntamento aggiunto!', 'success');
   };
@@ -206,6 +224,11 @@ export function AppointmentsPage({ onBack }: Props) {
             <div>
               <label className="label">Note</label>
               <input type="text" className="input-field" placeholder="Es. A digiuno, portare referti..." value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+            </div>
+            <div className="card-sm bg-warm-gray-50 space-y-2">
+              <p className="text-sm font-semibold text-warm-gray-700">Promemoria</p>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.reminder_day_before} onChange={e => setForm(p => ({ ...p, reminder_day_before: e.target.checked }))} /> Il giorno prima</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.reminder_two_hours} onChange={e => setForm(p => ({ ...p, reminder_two_hours: e.target.checked }))} /> Due ore prima</label>
             </div>
             <button onClick={addAppointment} disabled={!form.title || !form.appointment_date} className="btn-primary w-full">Aggiungi</button>
           </div>

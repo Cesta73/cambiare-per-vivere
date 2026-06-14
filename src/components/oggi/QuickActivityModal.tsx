@@ -7,20 +7,23 @@ import { todayISO, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 interface Props { onClose: () => void; }
 
 export function QuickActivityModal({ onClose }: Props) {
-  const { user, isDemo, showToast } = useApp();
+  const { user, showToast } = useApp();
   const [type, setType] = useState('walking');
   const [name, setName] = useState('');
   const [duration, setDuration] = useState('30');
   const [effort, setEffort] = useState<string>('');
   const [pain, setPain] = useState('');
-  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
     if (!duration || parseInt(duration) <= 0) return;
     setLoading(true);
-    if (!isDemo && user) {
-      await supabase.from('activity_entries').insert({
+    if (!user) {
+      showToast('Sessione non disponibile.', 'error');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('activity_entries').insert({
         user_id: user.id,
         activity_date: todayISO(),
         activity_type: type,
@@ -28,8 +31,12 @@ export function QuickActivityModal({ onClose }: Props) {
         duration_minutes: parseInt(duration),
         perceived_effort: effort ? parseInt(effort) : null,
         pain_or_difficulty: pain || null,
-        notes: notes || null,
-      });
+        notes: null,
+    });
+    if (error) {
+      showToast(`Attività non registrata: ${error.message}`, 'error');
+      setLoading(false);
+      return;
     }
     showToast('Attività registrata!', 'success');
     setLoading(false);

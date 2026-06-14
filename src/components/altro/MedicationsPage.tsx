@@ -32,7 +32,7 @@ export function MedicationsPage({ onBack }: Props) {
   const [todayLogs, setTodayLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
-  const [form, setForm] = useState({ name: '', category: 'supplement', frequency: 'daily', notes: '' });
+  const [form, setForm] = useState({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
 
   const today = todayISO();
 
@@ -112,7 +112,7 @@ export function MedicationsPage({ onBack }: Props) {
         updated_at: new Date().toISOString(),
       }]);
       setAddModal(false);
-      setForm({ name: '', category: 'supplement', frequency: 'daily', notes: '' });
+      setForm({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
       return;
     }
     if (!user) return;
@@ -121,12 +121,27 @@ export function MedicationsPage({ onBack }: Props) {
       name: form.name,
       category: form.category as MedicationReminder['category'],
       frequency: form.frequency as MedicationReminder['frequency'],
+      scheduled_time: form.scheduled_time || null,
       notes: form.notes || null,
       is_active: true,
     }).select().maybeSingle();
-    if (data) setReminders(prev => [...prev, data]);
+    if (data) {
+      setReminders(prev => [...prev, data]);
+      if (form.scheduled_time && form.frequency === 'daily') {
+        const remindAt = new Date(`${today}T${form.scheduled_time}:00`);
+        if (remindAt.getTime() < Date.now()) remindAt.setDate(remindAt.getDate() + 1);
+        await supabase.from('reminders').insert({
+          user_id: user.id,
+          title: `Assunzione: ${form.name}`,
+          entity_type: 'medication',
+          entity_id: data.id,
+          remind_at: remindAt.toISOString(),
+          repeat_rule: 'daily',
+        });
+      }
+    }
     setAddModal(false);
-    setForm({ name: '', category: 'supplement', frequency: 'daily', notes: '' });
+    setForm({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
     showToast('Promemoria aggiunto!', 'success');
   };
 
@@ -179,6 +194,7 @@ export function MedicationsPage({ onBack }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-warm-gray-800 text-sm">{rem.name}</p>
                     <p className="text-xs text-warm-gray-500">{CAT_LABELS[rem.category]} · {FREQ_LABELS[rem.frequency]}</p>
+                    {rem.scheduled_time && <p className="text-xs text-warm-gray-500">Promemoria ore {rem.scheduled_time.slice(0, 5)}</p>}
                   </div>
                   <div className="flex gap-1">
                     <button
@@ -224,6 +240,10 @@ export function MedicationsPage({ onBack }: Props) {
               <select className="input-field" value={form.frequency} onChange={e => setForm(p => ({ ...p, frequency: e.target.value }))}>
                 {Object.entries(FREQ_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="label">Ora promemoria</label>
+              <input type="time" className="input-field" value={form.scheduled_time} onChange={e => setForm(p => ({ ...p, scheduled_time: e.target.value }))} />
             </div>
             <div>
               <label className="label">Note (opzionale)</label>

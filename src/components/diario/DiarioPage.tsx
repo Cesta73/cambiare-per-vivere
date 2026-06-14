@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, ChevronLeft, ChevronRight, Heart, Search } from 'lucide-react';
+import { BookOpen, Plus, Heart, Search, Sunrise, Moon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { JournalEntry, DailyCheckin, PersonalGoal } from '../../lib/supabase';
-import { todayISO, formatDate, formatDateLong, MEAL_TYPE_LABELS } from '../../lib/utils';
+import { todayISO, formatDateLong } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { ScoreButtons } from '../ui/ScoreButtons';
 
 type DiaryTab = 'oggi' | 'storico' | 'ragioni';
+type DayPhase = 'mattino' | 'sera';
 
 const JOURNAL_QUESTIONS = [
   { key: 'feeling_today', label: 'Come mi sento oggi?', placeholder: 'Descrivi il tuo stato d\'animo...' },
@@ -20,9 +21,17 @@ const JOURNAL_QUESTIONS = [
 
 type JournalKey = typeof JOURNAL_QUESTIONS[number]['key'];
 
+const MORNING_QUESTIONS = JOURNAL_QUESTIONS.filter(q =>
+  ['feeling_today', 'current_need', 'tomorrow_intention'].includes(q.key)
+);
+const EVENING_QUESTIONS = JOURNAL_QUESTIONS.filter(q =>
+  ['small_victory', 'main_difficulty', 'what_helped'].includes(q.key)
+);
+
 export function DiarioPage() {
   const { user, isDemo, demoData, showToast } = useApp();
   const [tab, setTab] = useState<DiaryTab>('oggi');
+  const [phase, setPhase] = useState<DayPhase>(() => new Date().getHours() < 15 ? 'mattino' : 'sera');
   const [entry, setEntry] = useState<Partial<JournalEntry>>({});
   const [checkin, setCheckin] = useState<Partial<DailyCheckin>>({});
   const [goals, setGoals] = useState<PersonalGoal[]>([]);
@@ -73,13 +82,17 @@ export function DiarioPage() {
       return;
     }
     if (!user) return;
-    const { data } = await supabase.from('journal_entries').upsert({
+    const { data, error } = await supabase.from('journal_entries').upsert({
       user_id: user.id,
       entry_date: today,
       ...entry,
     }, { onConflict: 'user_id,entry_date' }).select().maybeSingle();
-    if (data) setEntry(data);
-    showToast('Diario salvato!', 'success');
+    if (error) {
+      showToast(`Diario non salvato: ${error.message}`, 'error');
+    } else {
+      if (data) setEntry(data);
+      showToast(`${phase === 'mattino' ? 'Intenzioni del mattino' : 'Riflessione della sera'} salvata!`, 'success');
+    }
     setSaving(false);
   };
 
@@ -152,6 +165,19 @@ export function DiarioPage() {
 
       {tab === 'oggi' && (
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setPhase('mattino')} className={`rounded-2xl p-4 text-left ${phase === 'mattino' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-white border border-warm-gray-100'}`}>
+              <Sunrise size={22} className="text-amber-700 mb-2" />
+              <p className="font-semibold text-warm-gray-800">Mattino</p>
+              <p className="text-xs text-warm-gray-500">Intenzioni e buoni propositi</p>
+            </button>
+            <button onClick={() => setPhase('sera')} className={`rounded-2xl p-4 text-left ${phase === 'sera' ? 'bg-petrol-100 border-2 border-petrol-400' : 'bg-white border border-warm-gray-100'}`}>
+              <Moon size={22} className="text-petrol-700 mb-2" />
+              <p className="font-semibold text-warm-gray-800">Sera</p>
+              <p className="text-xs text-warm-gray-500">Vittorie e difficoltà</p>
+            </button>
+          </div>
+
           {/* Scores */}
           <div className="card space-y-4">
             <h2 className="font-semibold text-warm-gray-800">Come sto oggi</h2>
@@ -165,8 +191,8 @@ export function DiarioPage() {
 
           {/* Journal questions */}
           <div className="card space-y-4">
-            <h2 className="font-semibold text-warm-gray-800">Riflessione del giorno</h2>
-            {JOURNAL_QUESTIONS.map(q => (
+            <h2 className="font-semibold text-warm-gray-800">{phase === 'mattino' ? 'Intenzioni del mattino' : 'Riflessione della sera'}</h2>
+            {(phase === 'mattino' ? MORNING_QUESTIONS : EVENING_QUESTIONS).map(q => (
               <div key={q.key}>
                 <label className="label">{q.label}</label>
                 <textarea
@@ -177,7 +203,7 @@ export function DiarioPage() {
                 />
               </div>
             ))}
-            <div>
+            {phase === 'sera' && <div>
               <label className="label">Note libere</label>
               <textarea
                 className="input-field h-24 resize-none text-sm"
@@ -185,9 +211,9 @@ export function DiarioPage() {
                 value={entry.free_notes ?? ''}
                 onChange={e => setEntry(prev => ({ ...prev, free_notes: e.target.value }))}
               />
-            </div>
+            </div>}
             <button onClick={saveEntry} disabled={saving} className="btn-primary w-full">
-              {saving ? 'Salvataggio...' : 'Salva diario'}
+              {saving ? 'Salvataggio...' : phase === 'mattino' ? 'Salva il mattino' : 'Concludi la giornata'}
             </button>
           </div>
         </div>
@@ -221,7 +247,7 @@ export function DiarioPage() {
                 </div>
                 <div className="space-y-2">
                   {JOURNAL_QUESTIONS.map(q => {
-                    const val = (e as Record<string, string>)[q.key];
+                    const val = e[q.key];
                     if (!val) return null;
                     return (
                       <div key={q.key}>

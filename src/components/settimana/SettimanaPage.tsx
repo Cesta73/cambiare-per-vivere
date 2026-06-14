@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Star, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Star, Check, ClipboardCheck, ShoppingCart, CalendarDays } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { PlannedMeal, WorkShift, FavoriteMeal } from '../../lib/supabase';
 import { getWeekStart, getWeekDays, dateToISO, formatDateShort, getDayNameShort, SHIFT_LABELS, SHIFT_COLORS, MEAL_TYPE_LABELS, todayISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
+import { QuickMealModal } from '../oggi/QuickMealModal';
 
 const MEAL_TYPES = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
 const SHIFT_TYPES = ['morning', 'afternoon', 'night', 'rest', 'custom'] as const;
+const MEAL_SUGGESTIONS = [
+  { name: 'Pesce, verdure e cereale integrale', ingredients: 'pesce azzurro, verdure di stagione, riso integrale' },
+  { name: 'Legumi e verdure', ingredients: 'legumi, verdure di stagione, pane integrale' },
+  { name: 'Pollo e verdure', ingredients: 'pollo, verdure di stagione, patate' },
+  { name: 'Yogurt e frutta', ingredients: 'yogurt, frutta fresca, avena' },
+];
 
 interface MealFormData {
   name: string;
@@ -29,6 +36,8 @@ export function SettimanaPage() {
   const [editMeal, setEditMeal] = useState<PlannedMeal | null>(null);
   const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO() });
   const [shiftType, setShiftType] = useState<string>('morning');
+  const [view, setView] = useState<'plan' | 'register'>('plan');
+  const [registerMeal, setRegisterMeal] = useState(false);
 
   const weekDays = getWeekDays(weekStart);
 
@@ -215,6 +224,36 @@ export function SettimanaPage() {
     showToast(`Copiati ${newMeals.length} pasti dalla settimana precedente!`, 'success');
   };
 
+  const generateShoppingList = async () => {
+    if (!user) return;
+    const ingredients = meals
+      .flatMap(meal => (meal.ingredients ?? '').split(','))
+      .map(item => item.trim())
+      .filter(Boolean);
+    const unique = [...new Map(ingredients.map(item => [item.toLowerCase(), item])).values()];
+    if (!unique.length) {
+      showToast('Aggiungi gli ingredienti ai pasti per creare la lista.', 'info');
+      return;
+    }
+    const { data: list, error } = await supabase.from('shopping_lists').insert({
+      user_id: user.id,
+      name: `Spesa ${dateToISO(weekStart)}`,
+      week_start: dateToISO(weekStart),
+    }).select().maybeSingle();
+    if (error || !list) {
+      showToast(`Lista non creata: ${error?.message ?? 'errore sconosciuto'}`, 'error');
+      return;
+    }
+    const { error: itemsError } = await supabase.from('shopping_list_items').insert(unique.map(name => ({
+      user_id: user.id,
+      list_id: list.id,
+      name,
+      category: 'altro',
+      is_manual: false,
+    })));
+    showToast(itemsError ? `Elementi non salvati: ${itemsError.message}` : `Lista della spesa creata con ${unique.length} elementi.`, itemsError ? 'error' : 'success');
+  };
+
   const goToPrevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
   const goToNextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
 
@@ -227,13 +266,44 @@ export function SettimanaPage() {
     <div className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="section-title">Pianificazione</h1>
+        <h1 className="section-title">Pasti e turni</h1>
         <div className="flex gap-2">
           <button onClick={copyPrevWeek} className="text-xs text-sage-600 font-medium hover:underline">Copia settimana prec.</button>
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 bg-warm-gray-100 rounded-xl p-1">
+        <button onClick={() => setView('plan')} className={`py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${view === 'plan' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
+          <CalendarDays size={16} /> Pianifica
+        </button>
+        <button onClick={() => setView('register')} className={`py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${view === 'register' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
+          <ClipboardCheck size={16} /> Registra
+        </button>
+      </div>
+
+      {view === 'register' && (
+        <div className="space-y-4">
+          <div className="card bg-amber-50 border-amber-200">
+            <h2 className="font-semibold text-warm-gray-800">Registra il pasto consumato</h2>
+            <p className="text-sm text-warm-gray-600 mt-1">Puoi confermare il pasto pianificato spuntandolo oppure registrare una variazione.</p>
+            <button onClick={() => setRegisterMeal(true)} className="btn-primary w-full mt-4">Registra una variazione</button>
+          </div>
+          <div className="card">
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti di oggi</h2>
+            {getMealsForDay(todayISO()).length === 0 ? <p className="text-sm text-warm-gray-400">Nessun pasto pianificato oggi.</p> :
+              getMealsForDay(todayISO()).map(meal => (
+                <button key={meal.id} onClick={() => toggleMealComplete(meal)} className={`w-full flex items-center gap-3 p-3 rounded-xl mb-2 text-left ${meal.is_completed ? 'bg-sage-50' : 'bg-warm-gray-50'}`}>
+                  <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${meal.is_completed ? 'bg-sage-600 border-sage-600 text-white' : 'border-warm-gray-300'}`}>{meal.is_completed && <Check size={14} />}</span>
+                  <span className="flex-1 text-sm font-medium">{meal.name}</span>
+                  <span className="text-xs text-warm-gray-500">{MEAL_TYPE_LABELS[meal.meal_type]}</span>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Week Navigator */}
+      {view === 'plan' && <>
       <div className="flex items-center justify-between card py-3">
         <button onClick={goToPrevWeek} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors">
           <ChevronLeft size={20} className="text-warm-gray-600" />
@@ -343,6 +413,11 @@ export function SettimanaPage() {
         </div>
       )}
 
+      <button onClick={generateShoppingList} className="btn-secondary w-full flex items-center justify-center gap-2">
+        <ShoppingCart size={17} /> Genera lista della spesa
+      </button>
+      </>}
+
       {/* Add Meal Modal */}
       {modal === 'add_meal' && (
         <Modal isOpen title={editMeal ? 'Modifica pasto' : 'Aggiungi pasto'} onClose={() => setModal(null)}>
@@ -356,6 +431,18 @@ export function SettimanaPage() {
             <div>
               <label className="label">Nome pasto *</label>
               <input type="text" className="input-field" placeholder="Es. Pasta al pomodoro" value={mealForm.name} onChange={e => setMealForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+            </div>
+            <div>
+              <label className="label">Suggerimenti coerenti con il tuo percorso</label>
+              <div className="grid grid-cols-2 gap-2">
+                {MEAL_SUGGESTIONS.map(suggestion => (
+                  <button key={suggestion.name} onClick={() => setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients }))}
+                    className="text-left text-xs bg-amber-50 border border-amber-200 rounded-xl p-2 text-amber-900">
+                    {suggestion.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-warm-gray-400 mt-1">Suggerimenti generali dal Second Brain, non prescrizioni nutrizionali.</p>
             </div>
             <div>
               <label className="label">Ingredienti / contenuto (opzionale)</label>
@@ -412,6 +499,7 @@ export function SettimanaPage() {
           </div>
         </Modal>
       )}
+      {registerMeal && <QuickMealModal onClose={() => setRegisterMeal(false)} />}
     </div>
   );
 }

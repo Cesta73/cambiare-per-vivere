@@ -3,12 +3,12 @@ import { Modal } from '../ui/Modal';
 import { ScoreButtons } from '../ui/ScoreButtons';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
-import { todayISO, MEAL_TYPE_LABELS } from '../../lib/utils';
+import { MEAL_TYPE_LABELS } from '../../lib/utils';
 
 interface Props { onClose: () => void; }
 
 export function QuickMealModal({ onClose }: Props) {
-  const { user, isDemo, showToast } = useApp();
+  const { user, showToast } = useApp();
   const [step, setStep] = useState<'pre' | 'post'>('pre');
   const [mealType, setMealType] = useState('lunch');
   const [preHunger, setPreHunger] = useState<number | null>(null);
@@ -24,8 +24,12 @@ export function QuickMealModal({ onClose }: Props) {
 
   const handleSave = async () => {
     setLoading(true);
-    if (!isDemo && user) {
-      await supabase.from('hunger_satiety_entries').insert({
+    if (!user) {
+      showToast('Sessione non disponibile.', 'error');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('hunger_satiety_entries').insert({
         user_id: user.id,
         entry_datetime: new Date().toISOString(),
         meal_type: mealType,
@@ -38,7 +42,11 @@ export function QuickMealModal({ onClose }: Props) {
         post_ate_calmly: postCalmly,
         post_stopped_at_right_time: postStopped,
         post_notes: postNotes || null,
-      });
+    });
+    if (error) {
+      showToast(`Pasto non registrato: ${error.message}`, 'error');
+      setLoading(false);
+      return;
     }
     showToast('Registrazione pasto salvata!', 'success');
     setLoading(false);

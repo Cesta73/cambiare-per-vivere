@@ -31,6 +31,10 @@ export function Onboarding() {
   const [preferredWeighDays, setPreferredWeighDays] = useState<string[]>(['monday']);
   const [usesCpap, setUsesCpap] = useState(false);
   const [usedShifts, setUsedShifts] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [startWeight, setStartWeight] = useState('');
+  const [startWaist, setStartWaist] = useState('');
+  const [startNeck, setStartNeck] = useState('');
 
   const steps = [
     { title: 'Benvenuto/a!', subtitle: 'Iniziamo conoscendoci un po\'' },
@@ -54,34 +58,34 @@ export function Onboarding() {
     if (!user) return;
     setLoading(true);
     try {
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: user.id,
         display_name: displayName || null,
         height_cm: heightCm ? parseFloat(heightCm) : null,
         goal_description: goalDescription || null,
         preferred_weigh_days: preferredWeighDays,
         uses_cpap: usesCpap,
-        start_date: '2024-09-17',
-        start_weight: 149.8,
-        discharge_weight: 145.5,
-        start_waist: 155.5,
-        discharge_waist: 154.0,
-        start_neck: 52.0,
-        discharge_neck: 50.0,
+        start_date: startDate || undefined,
+        start_weight: startWeight ? parseFloat(startWeight) : undefined,
+        start_waist: startWaist ? parseFloat(startWaist) : undefined,
+        start_neck: startNeck ? parseFloat(startNeck) : undefined,
         is_demo: false,
       });
+      if (profileError) throw profileError;
 
       if (goalDescription) {
-        await supabase.from('personal_goals').insert({
+        const { error: goalError } = await supabase.from('personal_goals').insert({
           user_id: user.id,
           title: goalDescription.slice(0, 60),
           description: goalDescription,
           is_active: true,
           display_order: 0,
         });
+        if (goalError) throw goalError;
       }
 
-      await updateProfile({ display_name: displayName || null });
+      const { error } = await updateProfile({ display_name: displayName || null });
+      if (error) throw new Error(error);
       showToast('Profilo creato! Benvenuto/a nell\'app.', 'success');
     } catch {
       showToast('Errore nel salvataggio del profilo', 'error');
@@ -147,6 +151,24 @@ export function Onboarding() {
                   onChange={e => setGoalDescription(e.target.value)}
                 />
                 <p className="text-xs text-warm-gray-400 mt-1">Inserisci solo obiettivi concordati con i tuoi professionisti di riferimento.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="label">Data di partenza (facoltativa)</label>
+                  <input type="date" className="input-field" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Peso iniziale (kg)</label>
+                  <input type="number" step="0.1" className="input-field" value={startWeight} onChange={e => setStartWeight(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Addome iniziale (cm)</label>
+                  <input type="number" step="0.1" className="input-field" value={startWaist} onChange={e => setStartWaist(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Collo iniziale (cm)</label>
+                  <input type="number" step="0.1" className="input-field" value={startNeck} onChange={e => setStartNeck(e.target.value)} />
+                </div>
               </div>
               <div>
                 <label className="label">Giorni preferiti per la pesata</label>

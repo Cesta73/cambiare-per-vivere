@@ -8,7 +8,7 @@ import type { DailyCheckin } from '../../lib/supabase';
 interface Props { checkin: DailyCheckin | null; onClose: () => void; }
 
 export function QuickWaterModal({ checkin, onClose }: Props) {
-  const { user, isDemo, showToast } = useApp();
+  const { user, showToast } = useApp();
   const [amount, setAmount] = useState('250');
   const [loading, setLoading] = useState(false);
 
@@ -18,12 +18,20 @@ export function QuickWaterModal({ checkin, onClose }: Props) {
     const ml = parseInt(amount);
     if (!ml || ml <= 0) return;
     setLoading(true);
-    if (!isDemo && user) {
-      await supabase.from('daily_checkins').upsert({
+    if (!user) {
+      showToast('Sessione non disponibile.', 'error');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('daily_checkins').upsert({
         user_id: user.id,
         checkin_date: todayISO(),
         water_ml: currentMl + ml,
-      }, { onConflict: 'user_id,checkin_date' });
+    }, { onConflict: 'user_id,checkin_date' });
+    if (error) {
+      showToast(`Acqua non registrata: ${error.message}`, 'error');
+      setLoading(false);
+      return;
     }
     showToast(`+${ml} ml aggiunti! Totale: ${currentMl + ml} ml`, 'success');
     setLoading(false);

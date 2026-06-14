@@ -58,7 +58,6 @@ export function StudyPage({ onBack }: Props) {
     if (!user) return;
     await supabase.from('contemplative_study_progress').upsert({
       user_id: user.id,
-      module_key: moduleKey,
       ...updated,
     }, { onConflict: 'user_id,module_key' });
   };

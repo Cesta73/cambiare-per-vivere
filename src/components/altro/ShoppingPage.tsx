@@ -28,7 +28,7 @@ export function ShoppingPage({ onBack }: Props) {
   const loadLists = async () => {
     setLoading(true);
     if (isDemo) {
-      setLists([demoData.shoppingList]);
+      setLists(demoData.shoppingList ? [demoData.shoppingList] : []);
       setSelectedList(demoData.shoppingList);
       setItems(demoData.shoppingItems);
     } else if (user) {
