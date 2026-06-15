@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { ScoreButtons } from '../ui/ScoreButtons';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
+import type { FavoriteMeal } from '../../lib/supabase';
 import { MEAL_TYPE_LABELS } from '../../lib/utils';
 
 interface Props { onClose: () => void; }
@@ -34,6 +35,23 @@ export function QuickMealModal({ onClose }: Props) {
   const [sourceProduct, setSourceProduct] = useState('');
   const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
   const [searchingFood, setSearchingFood] = useState(false);
+  const [favoriteMeals, setFavoriteMeals] = useState<FavoriteMeal[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('favorite_meals')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('use_count', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setFavoriteMeals(data ?? []));
+  }, [user]);
+
+  const normalizedMealName = mealName.trim().toLocaleLowerCase('it');
+  const personalMealSuggestions = favoriteMeals
+    .filter(meal => meal.calories_kcal !== null && (!normalizedMealName || meal.name.toLocaleLowerCase('it').includes(normalizedMealName)))
+    .slice(0, 4);
 
   const searchFood = async () => {
     if (!mealName.trim()) return;
@@ -68,6 +86,45 @@ export function QuickMealModal({ onClose }: Props) {
     setFoodResults([]);
   };
 
+  const selectFavoriteMeal = (meal: FavoriteMeal) => {
+    setMealName(meal.name);
+    setMealType(meal.meal_type || mealType);
+    setQuantityG(meal.quantity_g?.toString() || '100');
+    setCalories(meal.calories_kcal?.toString() || '');
+    setCalorieSource(meal.calories_source === 'open_food_facts' ? 'open_food_facts' : 'manual');
+    setSourceProduct(meal.source_product || '');
+    setFoodResults([]);
+  };
+
+  const rememberMeal = async () => {
+    const name = mealName.trim();
+    const caloriesValue = calories ? parseInt(calories) : null;
+    if (!user || !name || caloriesValue === null || Number.isNaN(caloriesValue)) return;
+
+    const rememberedMeal = favoriteMeals.find(meal => meal.name.trim().toLocaleLowerCase('it') === name.toLocaleLowerCase('it'));
+    const rememberedValues = {
+      name,
+      meal_type: mealType,
+      quantity_g: quantityG ? parseFloat(quantityG) : null,
+      calories_kcal: caloriesValue,
+      calories_source: calorieSource,
+      source_product: sourceProduct || null,
+    };
+
+    if (rememberedMeal) {
+      await supabase
+        .from('favorite_meals')
+        .update({ ...rememberedValues, use_count: rememberedMeal.use_count + 1 })
+        .eq('id', rememberedMeal.id);
+    } else {
+      await supabase.from('favorite_meals').insert({
+        user_id: user.id,
+        ...rememberedValues,
+        use_count: 1,
+      });
+    }
+  };
+
   const handleSave = async () => {
     setLoading(true);
     if (!user) {
@@ -99,6 +156,7 @@ export function QuickMealModal({ onClose }: Props) {
       setLoading(false);
       return;
     }
+    await rememberMeal();
     showToast('Registrazione pasto salvata!', 'success');
     setLoading(false);
     onClose();
@@ -159,6 +217,20 @@ export function QuickMealModal({ onClose }: Props) {
                   </button>
                 </div>
               </div>
+              {personalMealSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">I tuoi pasti</p>
+                  {personalMealSuggestions.map(meal => (
+                    <button key={meal.id} type="button" onClick={() => selectFavoriteMeal(meal)} className="w-full text-left bg-white rounded-xl p-3 border border-amber-200">
+                      <p className="text-sm font-semibold text-warm-gray-800">{meal.name}</p>
+                      <p className="text-xs text-warm-gray-500">
+                        {meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''} · usato {meal.use_count} {meal.use_count === 1 ? 'volta' : 'volte'}
+                      </p>
+                    </button>
+                  ))}
+                  <p className="text-xs text-warm-gray-500">Tocca un pasto per riutilizzarlo. Puoi sempre correggere quantità e calorie.</p>
+                </div>
+              )}
               <div>
                 <label className="label">Quantità indicativa (grammi)</label>
                 <input type="number" min="1" className="input-field" value={quantityG} onChange={e => setQuantityG(e.target.value)} />
