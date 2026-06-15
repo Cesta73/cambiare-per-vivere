@@ -18,6 +18,8 @@ export type Database = {
       journal_entries: { Row: JournalEntry; Insert: Partial<JournalEntry>; Update: Partial<JournalEntry> };
       planned_meals: { Row: PlannedMeal; Insert: Partial<PlannedMeal>; Update: Partial<PlannedMeal> };
       favorite_meals: { Row: FavoriteMeal; Insert: Partial<FavoriteMeal>; Update: Partial<FavoriteMeal> };
+      recipes: { Row: Recipe; Insert: Partial<Recipe>; Update: Partial<Recipe> };
+      recipe_ingredients: { Row: RecipeIngredient; Insert: Partial<RecipeIngredient>; Update: Partial<RecipeIngredient> };
       shopping_lists: { Row: ShoppingList; Insert: Partial<ShoppingList>; Update: Partial<ShoppingList> };
       shopping_list_items: { Row: ShoppingListItem; Insert: Partial<ShoppingListItem>; Update: Partial<ShoppingListItem> };
       activity_entries: { Row: ActivityEntry; Insert: Partial<ActivityEntry>; Update: Partial<ActivityEntry> };
@@ -151,6 +153,36 @@ export interface FavoriteMeal {
   source_product: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Recipe {
+  id: string;
+  user_id: string;
+  name: string;
+  finished_weight_g: number;
+  total_calories_kcal: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  total_fiber_g: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeIngredient {
+  id: string;
+  recipe_id: string;
+  user_id: string;
+  name: string;
+  brand: string | null;
+  quantity_g: number;
+  calories_kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  created_at: string;
 }
 
 export interface ShoppingList {
