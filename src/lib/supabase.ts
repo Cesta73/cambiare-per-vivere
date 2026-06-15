@@ -120,6 +120,8 @@ export interface PlannedMeal {
   name: string;
   ingredients: string | null;
   notes: string | null;
+  quantity_g: number | null;
+  calories_kcal: number | null;
   is_completed: boolean;
   favorite_meal_id: string | null;
   created_at: string;
@@ -319,6 +321,7 @@ export interface HungerSatietyEntry {
   calories_kcal: number | null;
   calories_source: 'open_food_facts' | 'manual' | null;
   source_product: string | null;
+  planned_meal_id: string | null;
   created_at: string;
   updated_at: string;
 }

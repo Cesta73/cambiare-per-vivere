@@ -22,6 +22,8 @@ interface MealFormData {
   notes: string;
   mealType: string;
   date: string;
+  quantityG: string;
+  calories: string;
 }
 
 export function SettimanaPage() {
@@ -34,7 +36,7 @@ export function SettimanaPage() {
   const [selectedDay, setSelectedDay] = useState<string>(todayISO());
   const [modal, setModal] = useState<'add_meal' | 'add_shift' | 'favorites' | null>(null);
   const [editMeal, setEditMeal] = useState<PlannedMeal | null>(null);
-  const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO() });
+  const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO(), quantityG: '100', calories: '' });
   const [shiftType, setShiftType] = useState<string>('morning');
   const [view, setView] = useState<'plan' | 'register'>('plan');
   const [registerMeal, setRegisterMeal] = useState(false);
@@ -71,13 +73,21 @@ export function SettimanaPage() {
 
   const openAddMeal = (date: string, mealType = 'lunch') => {
     setEditMeal(null);
-    setMealForm({ name: '', ingredients: '', notes: '', mealType, date });
+    setMealForm({ name: '', ingredients: '', notes: '', mealType, date, quantityG: '100', calories: '' });
     setModal('add_meal');
   };
 
   const openEditMeal = (meal: PlannedMeal) => {
     setEditMeal(meal);
-    setMealForm({ name: meal.name, ingredients: meal.ingredients ?? '', notes: meal.notes ?? '', mealType: meal.meal_type, date: meal.plan_date });
+    setMealForm({
+      name: meal.name,
+      ingredients: meal.ingredients ?? '',
+      notes: meal.notes ?? '',
+      mealType: meal.meal_type,
+      date: meal.plan_date,
+      quantityG: meal.quantity_g?.toString() ?? '100',
+      calories: meal.calories_kcal?.toString() ?? '',
+    });
     setModal('add_meal');
   };
 
@@ -85,7 +95,16 @@ export function SettimanaPage() {
     if (!mealForm.name.trim()) return;
     if (isDemo) {
       if (editMeal) {
-        setMeals(prev => prev.map(m => m.id === editMeal.id ? { ...m, ...mealForm, meal_type: mealForm.mealType as PlannedMeal['meal_type'], plan_date: mealForm.date } : m));
+        setMeals(prev => prev.map(m => m.id === editMeal.id ? {
+          ...m,
+          name: mealForm.name,
+          ingredients: mealForm.ingredients || null,
+          notes: mealForm.notes || null,
+          meal_type: mealForm.mealType as PlannedMeal['meal_type'],
+          plan_date: mealForm.date,
+          quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
+          calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
+        } : m));
       } else {
         const newMeal: PlannedMeal = {
           id: Math.random().toString(36).slice(2),
@@ -95,6 +114,8 @@ export function SettimanaPage() {
           name: mealForm.name,
           ingredients: mealForm.ingredients || null,
           notes: mealForm.notes || null,
+          quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
+          calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
           is_completed: false,
           favorite_meal_id: null,
           created_at: new Date().toISOString(),
@@ -114,8 +135,20 @@ export function SettimanaPage() {
         notes: mealForm.notes || null,
         meal_type: mealForm.mealType as PlannedMeal['meal_type'],
         plan_date: mealForm.date,
+        quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
+        calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
       }).eq('id', editMeal.id).select().maybeSingle();
-      if (data) setMeals(prev => prev.map(m => m.id === editMeal.id ? data : m));
+      if (data) {
+        setMeals(prev => prev.map(m => m.id === editMeal.id ? data : m));
+        if (data.is_completed) {
+          await supabase.from('hunger_satiety_entries').update({
+            meal_type: data.meal_type,
+            meal_name: data.name,
+            quantity_g: data.quantity_g,
+            calories_kcal: data.calories_kcal,
+          }).eq('planned_meal_id', data.id);
+        }
+      }
     } else {
       const { data } = await supabase.from('planned_meals').insert({
         user_id: user.id,
@@ -124,6 +157,8 @@ export function SettimanaPage() {
         name: mealForm.name,
         ingredients: mealForm.ingredients || null,
         notes: mealForm.notes || null,
+        quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
+        calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
       }).select().maybeSingle();
       if (data) setMeals(prev => [...prev, data]);
     }
@@ -149,7 +184,30 @@ export function SettimanaPage() {
       return;
     }
     if (!user) return;
-    await supabase.from('planned_meals').update({ is_completed: newVal }).eq('id', meal.id);
+    const { error } = await supabase.from('planned_meals').update({ is_completed: newVal }).eq('id', meal.id);
+    if (error) {
+      showToast(`Pasto non aggiornato: ${error.message}`, 'error');
+      return;
+    }
+    if (newVal) {
+      const { error: registerError } = await supabase.from('hunger_satiety_entries').upsert({
+        user_id: user.id,
+        planned_meal_id: meal.id,
+        entry_datetime: new Date(`${meal.plan_date}T12:00:00`).toISOString(),
+        meal_type: meal.meal_type,
+        meal_name: meal.name,
+        quantity_g: meal.quantity_g,
+        calories_kcal: meal.calories_kcal,
+        calories_source: meal.calories_kcal !== null ? 'manual' : null,
+      }, { onConflict: 'planned_meal_id' });
+      if (registerError) {
+        await supabase.from('planned_meals').update({ is_completed: false }).eq('id', meal.id);
+        showToast(`Pasto non registrato: ${registerError.message}`, 'error');
+        return;
+      }
+    } else {
+      await supabase.from('hunger_satiety_entries').delete().eq('planned_meal_id', meal.id);
+    }
     setMeals(prev => prev.map(m => m.id === meal.id ? { ...m, is_completed: newVal } : m));
   };
 
@@ -191,7 +249,15 @@ export function SettimanaPage() {
   };
 
   const addFavoriteMeal = (fav: FavoriteMeal) => {
-    setMealForm(prev => ({ ...prev, name: fav.name, ingredients: fav.ingredients ?? '', notes: fav.notes ?? '', mealType: fav.meal_type ?? prev.mealType }));
+    setMealForm(prev => ({
+      ...prev,
+      name: fav.name,
+      ingredients: fav.ingredients ?? '',
+      notes: fav.notes ?? '',
+      mealType: fav.meal_type ?? prev.mealType,
+      quantityG: fav.quantity_g?.toString() ?? '100',
+      calories: fav.calories_kcal?.toString() ?? '',
+    }));
     setModal('add_meal');
   };
 
@@ -216,7 +282,16 @@ export function SettimanaPage() {
       const dayOffset = Math.round((prevDate.getTime() - new Date(prevStartISO + 'T12:00:00').getTime()) / 86400000);
       const newDate = new Date(weekStart);
       newDate.setDate(newDate.getDate() + dayOffset);
-      return { user_id: user.id, plan_date: dateToISO(newDate), meal_type: m.meal_type, name: m.name, ingredients: m.ingredients, notes: m.notes };
+      return {
+        user_id: user.id,
+        plan_date: dateToISO(newDate),
+        meal_type: m.meal_type,
+        name: m.name,
+        ingredients: m.ingredients,
+        notes: m.notes,
+        quantity_g: m.quantity_g,
+        calories_kcal: m.calories_kcal,
+      };
     });
 
     const { data } = await supabase.from('planned_meals').insert(newMeals).select();
@@ -394,6 +469,7 @@ export function SettimanaPage() {
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium ${meal.is_completed ? 'line-through text-warm-gray-400' : 'text-warm-gray-800'}`}>{meal.name}</p>
                           {meal.ingredients && <p className="text-xs text-warm-gray-500 mt-0.5">{meal.ingredients}</p>}
+                          {meal.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-0.5">{meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''}</p>}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => openEditMeal(meal)} className="p-1 rounded-lg hover:bg-warm-gray-200 text-warm-gray-400 transition-colors">
@@ -432,6 +508,19 @@ export function SettimanaPage() {
               <label className="label">Nome pasto *</label>
               <input type="text" className="input-field" placeholder="Es. Pasta al pomodoro" value={mealForm.name} onChange={e => setMealForm(p => ({ ...p, name: e.target.value }))} autoFocus />
             </div>
+            {favorites.filter(fav => fav.calories_kcal !== null && (!mealForm.name.trim() || fav.name.toLocaleLowerCase('it').includes(mealForm.name.trim().toLocaleLowerCase('it')))).slice(0, 3).length > 0 && (
+              <div>
+                <label className="label">I tuoi pasti già memorizzati</label>
+                <div className="space-y-2">
+                  {favorites.filter(fav => fav.calories_kcal !== null && (!mealForm.name.trim() || fav.name.toLocaleLowerCase('it').includes(mealForm.name.trim().toLocaleLowerCase('it')))).slice(0, 3).map(fav => (
+                    <button key={fav.id} type="button" onClick={() => addFavoriteMeal(fav)}
+                      className="w-full text-left text-xs bg-sage-50 border border-sage-200 rounded-xl p-2 text-sage-900">
+                      <span className="font-semibold">{fav.name}</span> · {fav.calories_kcal} kcal{fav.quantity_g ? ` · ${fav.quantity_g} g` : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="label">Suggerimenti coerenti con il tuo percorso</label>
               <div className="grid grid-cols-2 gap-2">
@@ -448,6 +537,17 @@ export function SettimanaPage() {
               <label className="label">Ingredienti / contenuto (opzionale)</label>
               <textarea className="input-field h-20 resize-none" placeholder="Es. Pasta integrale, pomodoro, basilico..." value={mealForm.ingredients} onChange={e => setMealForm(p => ({ ...p, ingredients: e.target.value }))} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Quantità (grammi)</label>
+                <input type="number" min="1" className="input-field" value={mealForm.quantityG} onChange={e => setMealForm(p => ({ ...p, quantityG: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Calorie totali</label>
+                <input type="number" min="0" className="input-field" placeholder="Es. 450" value={mealForm.calories} onChange={e => setMealForm(p => ({ ...p, calories: e.target.value }))} />
+              </div>
+            </div>
+            <p className="text-xs text-warm-gray-500">Quando spunti il pasto come consumato, queste calorie entrano nel riepilogo giornaliero.</p>
             <div>
               <label className="label">Note</label>
               <input type="text" className="input-field" placeholder="Opzionale..." value={mealForm.notes} onChange={e => setMealForm(p => ({ ...p, notes: e.target.value }))} />
@@ -492,6 +592,7 @@ export function SettimanaPage() {
                   className="w-full text-left card-sm hover:bg-sage-50 hover:border-sage-200 transition-all">
                   <p className="font-medium text-warm-gray-800">{fav.name}</p>
                   {fav.ingredients && <p className="text-xs text-warm-gray-500 mt-0.5">{fav.ingredients}</p>}
+                  {fav.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-0.5">{fav.calories_kcal} kcal{fav.quantity_g ? ` · ${fav.quantity_g} g` : ''}</p>}
                   <p className="text-xs text-warm-gray-400 mt-1">{MEAL_TYPE_LABELS[fav.meal_type ?? ''] ?? fav.meal_type} · Usato {fav.use_count}x</p>
                 </button>
               ))
