@@ -135,6 +135,10 @@ export interface FavoriteMeal {
   notes: string | null;
   shift_types: string[] | null;
   use_count: number;
+  quantity_g: number | null;
+  calories_kcal: number | null;
+  calories_source: 'open_food_facts' | 'manual' | null;
+  source_product: string | null;
   created_at: string;
   updated_at: string;
 }
