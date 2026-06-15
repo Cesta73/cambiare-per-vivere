@@ -42,6 +42,7 @@ export function DiarioPage() {
   const [goalModal, setGoalModal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalDesc, setNewGoalDesc] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   const today = todayISO();
 
@@ -75,20 +76,26 @@ export function DiarioPage() {
   };
 
   const saveEntry = async () => {
+    setSaveError('');
     setSaving(true);
     if (isDemo) {
       showToast('Diario salvato! (modalità demo)', 'success');
       setSaving(false);
       return;
     }
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      return;
+    }
     const { data, error } = await supabase.from('journal_entries').upsert({
       user_id: user.id,
       entry_date: today,
       ...entry,
     }, { onConflict: 'user_id,entry_date' }).select().maybeSingle();
     if (error) {
-      showToast(`Diario non salvato: ${error.message}`, 'error');
+      const message = `Diario non salvato: ${error.message}`;
+      setSaveError(message);
+      showToast(message, 'error');
     } else {
       if (data) setEntry(data);
       showToast(`${phase === 'mattino' ? 'Intenzioni del mattino' : 'Riflessione della sera'} salvata!`, 'success');
@@ -215,6 +222,11 @@ export function DiarioPage() {
             <button onClick={saveEntry} disabled={saving} className="btn-primary w-full">
               {saving ? 'Salvataggio...' : phase === 'mattino' ? 'Salva il mattino' : 'Concludi la giornata'}
             </button>
+            {saveError && (
+              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                {saveError}
+              </p>
+            )}
           </div>
         </div>
       )}
