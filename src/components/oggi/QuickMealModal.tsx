@@ -12,6 +12,10 @@ interface FoodResult {
   name: string;
   brand: string;
   kcal100g: number;
+  protein100g: number;
+  carbs100g: number;
+  fat100g: number;
+  fiber100g: number;
 }
 
 export function QuickMealModal({ onClose }: Props) {
@@ -31,12 +35,17 @@ export function QuickMealModal({ onClose }: Props) {
   const [mealName, setMealName] = useState('');
   const [quantityG, setQuantityG] = useState('100');
   const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+  const [fiber, setFiber] = useState('');
   const [calorieSource, setCalorieSource] = useState<'open_food_facts' | 'manual'>('manual');
   const [sourceProduct, setSourceProduct] = useState('');
   const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
   const [searchingFood, setSearchingFood] = useState(false);
   const [favoriteMeals, setFavoriteMeals] = useState<FavoriteMeal[]>([]);
   const [kcalPer100g, setKcalPer100g] = useState<number | null>(null);
+  const [macrosPer100g, setMacrosPer100g] = useState({ protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +67,11 @@ export function QuickMealModal({ onClose }: Props) {
     if (kcalPer100g === null) return;
     const grams = Math.max(1, parseFloat(quantityG) || 100);
     setCalories(Math.round(kcalPer100g * grams / 100).toString());
-  }, [quantityG, kcalPer100g]);
+    setProtein((macrosPer100g.protein * grams / 100).toFixed(1));
+    setCarbs((macrosPer100g.carbs * grams / 100).toFixed(1));
+    setFat((macrosPer100g.fat * grams / 100).toFixed(1));
+    setFiber((macrosPer100g.fiber * grams / 100).toFixed(1));
+  }, [quantityG, kcalPer100g, macrosPer100g]);
 
   const searchFood = async () => {
     if (!mealName.trim()) return;
@@ -76,6 +89,10 @@ export function QuickMealModal({ onClose }: Props) {
           name: product.product_name,
           brand: Array.isArray(product.brands) ? product.brands.join(', ') : product.brands ?? '',
           kcal100g: Math.round(kcal),
+          protein100g: product.nutriments?.proteins_100g ?? 0,
+          carbs100g: product.nutriments?.carbohydrates_100g ?? 0,
+          fat100g: product.nutriments?.fat_100g ?? 0,
+          fiber100g: product.nutriments?.fiber_100g ?? 0,
         }] : [];
       }));
     } catch {
@@ -89,6 +106,7 @@ export function QuickMealModal({ onClose }: Props) {
     setMealName(food.name);
     setCalories(Math.round(food.kcal100g * grams / 100).toString());
     setKcalPer100g(food.kcal100g);
+    setMacrosPer100g({ protein: food.protein100g, carbs: food.carbs100g, fat: food.fat100g, fiber: food.fiber100g });
     setCalorieSource('open_food_facts');
     setSourceProduct(`${food.name}${food.brand ? ` - ${food.brand}` : ''} (${food.kcal100g} kcal/100g)`);
     setFoodResults([]);
@@ -100,6 +118,16 @@ export function QuickMealModal({ onClose }: Props) {
     setQuantityG(meal.quantity_g?.toString() || '100');
     setCalories(meal.calories_kcal?.toString() || '');
     setKcalPer100g(meal.calories_kcal !== null && meal.quantity_g ? meal.calories_kcal * 100 / meal.quantity_g : null);
+    setMacrosPer100g({
+      protein: meal.protein_g !== null && meal.quantity_g ? meal.protein_g * 100 / meal.quantity_g : 0,
+      carbs: meal.carbs_g !== null && meal.quantity_g ? meal.carbs_g * 100 / meal.quantity_g : 0,
+      fat: meal.fat_g !== null && meal.quantity_g ? meal.fat_g * 100 / meal.quantity_g : 0,
+      fiber: meal.fiber_g !== null && meal.quantity_g ? meal.fiber_g * 100 / meal.quantity_g : 0,
+    });
+    setProtein(meal.protein_g?.toString() || '');
+    setCarbs(meal.carbs_g?.toString() || '');
+    setFat(meal.fat_g?.toString() || '');
+    setFiber(meal.fiber_g?.toString() || '');
     setCalorieSource(meal.calories_source === 'open_food_facts' ? 'open_food_facts' : 'manual');
     setSourceProduct(meal.source_product || '');
     setFoodResults([]);
@@ -116,6 +144,10 @@ export function QuickMealModal({ onClose }: Props) {
       meal_type: mealType,
       quantity_g: quantityG ? parseFloat(quantityG) : null,
       calories_kcal: caloriesValue,
+      protein_g: protein ? parseFloat(protein) : null,
+      carbs_g: carbs ? parseFloat(carbs) : null,
+      fat_g: fat ? parseFloat(fat) : null,
+      fiber_g: fiber ? parseFloat(fiber) : null,
       calories_source: calorieSource,
       source_product: sourceProduct || null,
     };
@@ -157,6 +189,10 @@ export function QuickMealModal({ onClose }: Props) {
         meal_name: mealName || null,
         quantity_g: quantityG ? parseFloat(quantityG) : null,
         calories_kcal: calories ? parseInt(calories) : null,
+        protein_g: protein ? parseFloat(protein) : null,
+        carbs_g: carbs ? parseFloat(carbs) : null,
+        fat_g: fat ? parseFloat(fat) : null,
+        fiber_g: fiber ? parseFloat(fiber) : null,
         calories_source: calories ? calorieSource : null,
         source_product: sourceProduct || null,
     });
@@ -224,6 +260,10 @@ export function QuickMealModal({ onClose }: Props) {
                     setMealName(e.target.value);
                     setKcalPer100g(null);
                     setCalories('');
+                    setProtein('');
+                    setCarbs('');
+                    setFat('');
+                    setFiber('');
                     setCalorieSource('manual');
                     setSourceProduct('');
                     setFoodResults([]);
@@ -256,7 +296,7 @@ export function QuickMealModal({ onClose }: Props) {
                   {foodResults.map((food, index) => (
                     <button key={`${food.name}-${index}`} type="button" onClick={() => selectFood(food)} className="w-full text-left bg-white rounded-xl p-3 border border-amber-200">
                       <p className="text-sm font-semibold text-warm-gray-800">{food.name}</p>
-                      <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g</p>
+                      <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g · P {food.protein100g}g · C {food.carbs100g}g · G {food.fat100g}g</p>
                     </button>
                   ))}
                 </div>
@@ -268,6 +308,15 @@ export function QuickMealModal({ onClose }: Props) {
                   La ricerca usa <a className="underline" href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Food Facts</a> (dati ODbL).
                   Per piatti casalinghi la stima va controllata e corretta.
                 </p>
+              </div>
+              <div>
+                <label className="label">Macronutrienti totali</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" min="0" step="0.1" className="input-field" placeholder="Proteine g" value={protein} onChange={e => setProtein(e.target.value)} />
+                  <input type="number" min="0" step="0.1" className="input-field" placeholder="Carboidrati g" value={carbs} onChange={e => setCarbs(e.target.value)} />
+                  <input type="number" min="0" step="0.1" className="input-field" placeholder="Grassi g" value={fat} onChange={e => setFat(e.target.value)} />
+                  <input type="number" min="0" step="0.1" className="input-field" placeholder="Fibre g" value={fiber} onChange={e => setFiber(e.target.value)} />
+                </div>
               </div>
             </div>
             <ScoreButtons label="Sazietà (0=ancora fame, 10=pieno)" value={postSatiety} onChange={setPostSatiety} min={0} max={10} colorScale />

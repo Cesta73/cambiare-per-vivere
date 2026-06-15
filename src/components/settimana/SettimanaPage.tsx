@@ -20,6 +20,10 @@ interface FoodResult {
   name: string;
   brand: string;
   kcal100g: number;
+  protein100g: number;
+  carbs100g: number;
+  fat100g: number;
+  fiber100g: number;
 }
 
 interface MealFormData {
@@ -30,6 +34,10 @@ interface MealFormData {
   date: string;
   quantityG: string;
   calories: string;
+  protein: string;
+  carbs: string;
+  fat: string;
+  fiber: string;
 }
 
 export function SettimanaPage() {
@@ -42,13 +50,14 @@ export function SettimanaPage() {
   const [selectedDay, setSelectedDay] = useState<string>(todayISO());
   const [modal, setModal] = useState<'add_meal' | 'add_shift' | 'favorites' | null>(null);
   const [editMeal, setEditMeal] = useState<PlannedMeal | null>(null);
-  const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO(), quantityG: '100', calories: '' });
+  const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO(), quantityG: '100', calories: '', protein: '', carbs: '', fat: '', fiber: '' });
   const [shiftType, setShiftType] = useState<string>('morning');
   const [view, setView] = useState<'plan' | 'register'>('plan');
   const [registerMeal, setRegisterMeal] = useState(false);
   const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
   const [searchingFood, setSearchingFood] = useState(false);
   const [kcalPer100g, setKcalPer100g] = useState<number | null>(null);
+  const [macrosPer100g, setMacrosPer100g] = useState({ protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
   const weekDays = getWeekDays(weekStart);
 
@@ -59,14 +68,27 @@ export function SettimanaPage() {
   useEffect(() => {
     if (kcalPer100g === null) return;
     const grams = Math.max(1, parseFloat(mealForm.quantityG) || 100);
-    setMealForm(prev => ({ ...prev, calories: Math.round(kcalPer100g * grams / 100).toString() }));
-  }, [mealForm.quantityG, kcalPer100g]);
+    setMealForm(prev => ({
+      ...prev,
+      calories: Math.round(kcalPer100g * grams / 100).toString(),
+      protein: (macrosPer100g.protein * grams / 100).toFixed(1),
+      carbs: (macrosPer100g.carbs * grams / 100).toFixed(1),
+      fat: (macrosPer100g.fat * grams / 100).toFixed(1),
+      fiber: (macrosPer100g.fiber * grams / 100).toFixed(1),
+    }));
+  }, [mealForm.quantityG, kcalPer100g, macrosPer100g]);
 
   useEffect(() => {
     const normalizedName = mealForm.name.trim().toLocaleLowerCase('it');
     const rememberedMeal = favorites.find(fav => fav.name.trim().toLocaleLowerCase('it') === normalizedName);
     if (!rememberedMeal?.quantity_g || rememberedMeal.calories_kcal === null) return;
     setKcalPer100g(rememberedMeal.calories_kcal * 100 / rememberedMeal.quantity_g);
+    setMacrosPer100g({
+      protein: rememberedMeal.protein_g !== null ? rememberedMeal.protein_g * 100 / rememberedMeal.quantity_g : 0,
+      carbs: rememberedMeal.carbs_g !== null ? rememberedMeal.carbs_g * 100 / rememberedMeal.quantity_g : 0,
+      fat: rememberedMeal.fat_g !== null ? rememberedMeal.fat_g * 100 / rememberedMeal.quantity_g : 0,
+      fiber: rememberedMeal.fiber_g !== null ? rememberedMeal.fiber_g * 100 / rememberedMeal.quantity_g : 0,
+    });
   }, [mealForm.name, favorites]);
 
   const loadData = async () => {
@@ -95,7 +117,7 @@ export function SettimanaPage() {
 
   const openAddMeal = (date: string, mealType = 'lunch') => {
     setEditMeal(null);
-    setMealForm({ name: '', ingredients: '', notes: '', mealType, date, quantityG: '100', calories: '' });
+    setMealForm({ name: '', ingredients: '', notes: '', mealType, date, quantityG: '100', calories: '', protein: '', carbs: '', fat: '', fiber: '' });
     setKcalPer100g(null);
     setFoodResults([]);
     setModal('add_meal');
@@ -111,8 +133,18 @@ export function SettimanaPage() {
       date: meal.plan_date,
       quantityG: meal.quantity_g?.toString() ?? '100',
       calories: meal.calories_kcal?.toString() ?? '',
+      protein: meal.protein_g?.toString() ?? '',
+      carbs: meal.carbs_g?.toString() ?? '',
+      fat: meal.fat_g?.toString() ?? '',
+      fiber: meal.fiber_g?.toString() ?? '',
     });
     setKcalPer100g(meal.calories_kcal !== null && meal.quantity_g ? meal.calories_kcal * 100 / meal.quantity_g : null);
+    setMacrosPer100g({
+      protein: meal.protein_g !== null && meal.quantity_g ? meal.protein_g * 100 / meal.quantity_g : 0,
+      carbs: meal.carbs_g !== null && meal.quantity_g ? meal.carbs_g * 100 / meal.quantity_g : 0,
+      fat: meal.fat_g !== null && meal.quantity_g ? meal.fat_g * 100 / meal.quantity_g : 0,
+      fiber: meal.fiber_g !== null && meal.quantity_g ? meal.fiber_g * 100 / meal.quantity_g : 0,
+    });
     setFoodResults([]);
     setModal('add_meal');
   };
@@ -133,6 +165,10 @@ export function SettimanaPage() {
           name: product.product_name,
           brand: Array.isArray(product.brands) ? product.brands.join(', ') : product.brands ?? '',
           kcal100g: Math.round(kcal),
+          protein100g: product.nutriments?.proteins_100g ?? 0,
+          carbs100g: product.nutriments?.carbohydrates_100g ?? 0,
+          fat100g: product.nutriments?.fat_100g ?? 0,
+          fiber100g: product.nutriments?.fiber_100g ?? 0,
         }] : [];
       }));
     } catch {
@@ -144,6 +180,7 @@ export function SettimanaPage() {
   const selectFood = (food: FoodResult) => {
     const grams = Math.max(1, parseFloat(mealForm.quantityG) || 100);
     setKcalPer100g(food.kcal100g);
+    setMacrosPer100g({ protein: food.protein100g, carbs: food.carbs100g, fat: food.fat100g, fiber: food.fiber100g });
     setMealForm(prev => ({
       ...prev,
       name: food.name,
@@ -165,6 +202,10 @@ export function SettimanaPage() {
       notes: mealForm.notes || null,
       quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
       calories_kcal: caloriesValue,
+      protein_g: mealForm.protein ? parseFloat(mealForm.protein) : null,
+      carbs_g: mealForm.carbs ? parseFloat(mealForm.carbs) : null,
+      fat_g: mealForm.fat ? parseFloat(mealForm.fat) : null,
+      fiber_g: mealForm.fiber ? parseFloat(mealForm.fiber) : null,
       calories_source: 'manual' as const,
     };
 
@@ -190,6 +231,10 @@ export function SettimanaPage() {
           plan_date: mealForm.date,
           quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
           calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
+          protein_g: mealForm.protein ? parseFloat(mealForm.protein) : null,
+          carbs_g: mealForm.carbs ? parseFloat(mealForm.carbs) : null,
+          fat_g: mealForm.fat ? parseFloat(mealForm.fat) : null,
+          fiber_g: mealForm.fiber ? parseFloat(mealForm.fiber) : null,
         } : m));
       } else {
         const newMeal: PlannedMeal = {
@@ -202,6 +247,10 @@ export function SettimanaPage() {
           notes: mealForm.notes || null,
           quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
           calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
+          protein_g: mealForm.protein ? parseFloat(mealForm.protein) : null,
+          carbs_g: mealForm.carbs ? parseFloat(mealForm.carbs) : null,
+          fat_g: mealForm.fat ? parseFloat(mealForm.fat) : null,
+          fiber_g: mealForm.fiber ? parseFloat(mealForm.fiber) : null,
           is_completed: false,
           favorite_meal_id: null,
           created_at: new Date().toISOString(),
@@ -223,6 +272,10 @@ export function SettimanaPage() {
         plan_date: mealForm.date,
         quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
         calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
+        protein_g: mealForm.protein ? parseFloat(mealForm.protein) : null,
+        carbs_g: mealForm.carbs ? parseFloat(mealForm.carbs) : null,
+        fat_g: mealForm.fat ? parseFloat(mealForm.fat) : null,
+        fiber_g: mealForm.fiber ? parseFloat(mealForm.fiber) : null,
       }).eq('id', editMeal.id).select().maybeSingle();
       if (data) {
         setMeals(prev => prev.map(m => m.id === editMeal.id ? data : m));
@@ -232,6 +285,10 @@ export function SettimanaPage() {
             meal_name: data.name,
             quantity_g: data.quantity_g,
             calories_kcal: data.calories_kcal,
+            protein_g: data.protein_g,
+            carbs_g: data.carbs_g,
+            fat_g: data.fat_g,
+            fiber_g: data.fiber_g,
           }).eq('planned_meal_id', data.id);
         }
       }
@@ -245,6 +302,10 @@ export function SettimanaPage() {
         notes: mealForm.notes || null,
         quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
         calories_kcal: mealForm.calories ? parseInt(mealForm.calories) : null,
+        protein_g: mealForm.protein ? parseFloat(mealForm.protein) : null,
+        carbs_g: mealForm.carbs ? parseFloat(mealForm.carbs) : null,
+        fat_g: mealForm.fat ? parseFloat(mealForm.fat) : null,
+        fiber_g: mealForm.fiber ? parseFloat(mealForm.fiber) : null,
       }).select().maybeSingle();
       if (data) setMeals(prev => [...prev, data]);
     }
@@ -285,6 +346,10 @@ export function SettimanaPage() {
         meal_name: meal.name,
         quantity_g: meal.quantity_g,
         calories_kcal: meal.calories_kcal,
+        protein_g: meal.protein_g,
+        carbs_g: meal.carbs_g,
+        fat_g: meal.fat_g,
+        fiber_g: meal.fiber_g,
         calories_source: meal.calories_kcal !== null ? 'manual' : null,
       }, { onConflict: 'planned_meal_id' });
       if (registerError) {
@@ -344,8 +409,18 @@ export function SettimanaPage() {
       mealType: fav.meal_type ?? prev.mealType,
       quantityG: fav.quantity_g?.toString() ?? '100',
       calories: fav.calories_kcal?.toString() ?? '',
+      protein: fav.protein_g?.toString() ?? '',
+      carbs: fav.carbs_g?.toString() ?? '',
+      fat: fav.fat_g?.toString() ?? '',
+      fiber: fav.fiber_g?.toString() ?? '',
     }));
     setKcalPer100g(fav.calories_kcal !== null && fav.quantity_g ? fav.calories_kcal * 100 / fav.quantity_g : null);
+    setMacrosPer100g({
+      protein: fav.protein_g !== null && fav.quantity_g ? fav.protein_g * 100 / fav.quantity_g : 0,
+      carbs: fav.carbs_g !== null && fav.quantity_g ? fav.carbs_g * 100 / fav.quantity_g : 0,
+      fat: fav.fat_g !== null && fav.quantity_g ? fav.fat_g * 100 / fav.quantity_g : 0,
+      fiber: fav.fiber_g !== null && fav.quantity_g ? fav.fiber_g * 100 / fav.quantity_g : 0,
+    });
     setFoodResults([]);
     setModal('add_meal');
   };
@@ -380,6 +455,10 @@ export function SettimanaPage() {
         notes: m.notes,
         quantity_g: m.quantity_g,
         calories_kcal: m.calories_kcal,
+        protein_g: m.protein_g,
+        carbs_g: m.carbs_g,
+        fat_g: m.fat_g,
+        fiber_g: m.fiber_g,
       };
     });
 
@@ -559,6 +638,7 @@ export function SettimanaPage() {
                           <p className={`text-sm font-medium ${meal.is_completed ? 'line-through text-warm-gray-400' : 'text-warm-gray-800'}`}>{meal.name}</p>
                           {meal.ingredients && <p className="text-xs text-warm-gray-500 mt-0.5">{meal.ingredients}</p>}
                           {meal.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-0.5">{meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''}</p>}
+                          {(meal.protein_g !== null || meal.carbs_g !== null || meal.fat_g !== null) && <p className="text-xs text-warm-gray-500 mt-0.5">P {meal.protein_g ?? 0}g · C {meal.carbs_g ?? 0}g · G {meal.fat_g ?? 0}g</p>}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => openEditMeal(meal)} className="p-1 rounded-lg hover:bg-warm-gray-200 text-warm-gray-400 transition-colors">
@@ -599,7 +679,7 @@ export function SettimanaPage() {
                 <input type="text" className="input-field" placeholder="Es. Pasta al pomodoro" value={mealForm.name} onChange={e => {
                   setKcalPer100g(null);
                   setFoodResults([]);
-                  setMealForm(p => ({ ...p, name: e.target.value, calories: '' }));
+                  setMealForm(p => ({ ...p, name: e.target.value, calories: '', protein: '', carbs: '', fat: '', fiber: '' }));
                 }} autoFocus />
                 <button type="button" onClick={searchFood} disabled={searchingFood || !mealForm.name.trim()} className="btn-secondary px-3 text-sm">
                   {searchingFood ? 'Cerco...' : 'Cerca calorie'}
@@ -612,7 +692,7 @@ export function SettimanaPage() {
                 {foodResults.map((food, index) => (
                   <button key={`${food.name}-${index}`} type="button" onClick={() => selectFood(food)} className="w-full text-left bg-white rounded-xl p-3 border border-amber-200">
                     <p className="text-sm font-semibold text-warm-gray-800">{food.name}</p>
-                    <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g</p>
+                    <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g · P {food.protein100g}g · C {food.carbs100g}g · G {food.fat100g}g</p>
                   </button>
                 ))}
               </div>
@@ -634,7 +714,7 @@ export function SettimanaPage() {
               <label className="label">Suggerimenti coerenti con il tuo percorso</label>
               <div className="grid grid-cols-2 gap-2">
                 {MEAL_SUGGESTIONS.map(suggestion => (
-                  <button key={suggestion.name} onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients, calories: '' })); }}
+                  <button key={suggestion.name} onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients, calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
                     className="text-left text-xs bg-amber-50 border border-amber-200 rounded-xl p-2 text-amber-900">
                     {suggestion.name}
                   </button>
@@ -654,6 +734,15 @@ export function SettimanaPage() {
               <div>
                 <label className="label">Calorie totali</label>
                 <input type="number" min="0" className="input-field" placeholder="Si compilano con la ricerca" value={mealForm.calories} onChange={e => { setKcalPer100g(null); setMealForm(p => ({ ...p, calories: e.target.value })); }} />
+              </div>
+            </div>
+            <div>
+              <label className="label">Macronutrienti totali</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="number" min="0" step="0.1" className="input-field" placeholder="Proteine g" value={mealForm.protein} onChange={e => setMealForm(p => ({ ...p, protein: e.target.value }))} />
+                <input type="number" min="0" step="0.1" className="input-field" placeholder="Carboidrati g" value={mealForm.carbs} onChange={e => setMealForm(p => ({ ...p, carbs: e.target.value }))} />
+                <input type="number" min="0" step="0.1" className="input-field" placeholder="Grassi g" value={mealForm.fat} onChange={e => setMealForm(p => ({ ...p, fat: e.target.value }))} />
+                <input type="number" min="0" step="0.1" className="input-field" placeholder="Fibre g" value={mealForm.fiber} onChange={e => setMealForm(p => ({ ...p, fiber: e.target.value }))} />
               </div>
             </div>
             <p className="text-xs text-warm-gray-500">
@@ -693,7 +782,7 @@ export function SettimanaPage() {
 
       {/* Favorites Modal */}
       {modal === 'favorites' && (
-        <Modal isOpen title="Pasti preferiti" onClose={() => setModal(null)}>
+        <Modal isOpen title="Pasti e ricette personali" onClose={() => setModal(null)}>
           <div className="space-y-3">
             {favorites.length === 0 ? (
               <p className="text-sm text-warm-gray-400 text-center py-4">Nessun pasto preferito ancora.</p>
@@ -704,6 +793,7 @@ export function SettimanaPage() {
                   <p className="font-medium text-warm-gray-800">{fav.name}</p>
                   {fav.ingredients && <p className="text-xs text-warm-gray-500 mt-0.5">{fav.ingredients}</p>}
                   {fav.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-0.5">{fav.calories_kcal} kcal{fav.quantity_g ? ` · ${fav.quantity_g} g` : ''}</p>}
+                  {(fav.protein_g !== null || fav.carbs_g !== null || fav.fat_g !== null) && <p className="text-xs text-warm-gray-500 mt-0.5">P {fav.protein_g ?? 0}g · C {fav.carbs_g ?? 0}g · G {fav.fat_g ?? 0}g</p>}
                   <p className="text-xs text-warm-gray-400 mt-1">{MEAL_TYPE_LABELS[fav.meal_type ?? ''] ?? fav.meal_type} · Usato {fav.use_count}x</p>
                 </button>
               ))

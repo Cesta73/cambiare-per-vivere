@@ -127,6 +127,15 @@ export function ProgressiPage() {
   const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({ date: formatDateShort(date), ...values }));
   const calorieChartData = caloriePeriod === 'days' ? calorieDailyData : calorieWeeklyData;
   const todayCalories = calorieDailyData[calorieDailyData.length - 1];
+  const todayKey = dateToISO(new Date());
+  const todayMacros = meals
+    .filter(meal => dateToISO(new Date(meal.entry_datetime)) === todayKey)
+    .reduce((total, meal) => ({
+      protein: total.protein + (meal.protein_g ?? 0),
+      carbs: total.carbs + (meal.carbs_g ?? 0),
+      fat: total.fat + (meal.fat_g ?? 0),
+      fiber: total.fiber + (meal.fiber_g ?? 0),
+    }), { protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -303,6 +312,15 @@ export function ProgressiPage() {
           <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
             <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
             <button onClick={() => setCaloriePeriod('weeks')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'weeks' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Settimane</button>
+          </div>
+          <div className="card">
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Macronutrienti di oggi</h2>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="bg-sage-50 rounded-xl p-2"><p className="text-xs text-warm-gray-500">Proteine</p><p className="font-bold text-sage-700">{todayMacros.protein.toFixed(1)}g</p></div>
+              <div className="bg-amber-50 rounded-xl p-2"><p className="text-xs text-warm-gray-500">Carboidrati</p><p className="font-bold text-amber-700">{todayMacros.carbs.toFixed(1)}g</p></div>
+              <div className="bg-petrol-50 rounded-xl p-2"><p className="text-xs text-warm-gray-500">Grassi</p><p className="font-bold text-petrol-700">{todayMacros.fat.toFixed(1)}g</p></div>
+              <div className="bg-warm-gray-100 rounded-xl p-2"><p className="text-xs text-warm-gray-500">Fibre</p><p className="font-bold text-warm-gray-700">{todayMacros.fiber.toFixed(1)}g</p></div>
+            </div>
           </div>
           <div className="card">
             <h2 className="font-semibold text-warm-gray-800 mb-4">Obiettivo, mangiate e bruciate</h2>
