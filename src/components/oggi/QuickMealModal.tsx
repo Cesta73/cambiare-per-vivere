@@ -36,6 +36,7 @@ export function QuickMealModal({ onClose }: Props) {
   const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
   const [searchingFood, setSearchingFood] = useState(false);
   const [favoriteMeals, setFavoriteMeals] = useState<FavoriteMeal[]>([]);
+  const [kcalPer100g, setKcalPer100g] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -53,21 +54,27 @@ export function QuickMealModal({ onClose }: Props) {
     .filter(meal => meal.calories_kcal !== null && (!normalizedMealName || meal.name.toLocaleLowerCase('it').includes(normalizedMealName)))
     .slice(0, 4);
 
+  useEffect(() => {
+    if (kcalPer100g === null) return;
+    const grams = Math.max(1, parseFloat(quantityG) || 100);
+    setCalories(Math.round(kcalPer100g * grams / 100).toString());
+  }, [quantityG, kcalPer100g]);
+
   const searchFood = async () => {
     if (!mealName.trim()) return;
     setSearchingFood(true);
     try {
       const fields = 'product_name,brands,nutriments';
-      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(mealName)}&search_simple=1&action=process&json=1&page_size=8&fields=${fields}`;
+      const url = `https://search.openfoodfacts.org/search?q=${encodeURIComponent(mealName)}&langs=it,en&page_size=8&fields=${fields}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Ricerca non disponibile');
-      const result = await response.json() as { products?: Array<{ product_name?: string; brands?: string; nutriments?: Record<string, number> }> };
-      setFoodResults((result.products ?? []).flatMap(product => {
+      const result = await response.json() as { hits?: Array<{ product_name?: string; brands?: string[] | string; nutriments?: Record<string, number> }> };
+      setFoodResults((result.hits ?? []).flatMap(product => {
         const kcal = product.nutriments?.['energy-kcal_100g']
           ?? (product.nutriments?.energy_100g ? product.nutriments.energy_100g / 4.184 : 0);
         return product.product_name && kcal > 0 ? [{
           name: product.product_name,
-          brand: product.brands ?? '',
+          brand: Array.isArray(product.brands) ? product.brands.join(', ') : product.brands ?? '',
           kcal100g: Math.round(kcal),
         }] : [];
       }));
@@ -81,6 +88,7 @@ export function QuickMealModal({ onClose }: Props) {
     const grams = Math.max(1, parseFloat(quantityG) || 100);
     setMealName(food.name);
     setCalories(Math.round(food.kcal100g * grams / 100).toString());
+    setKcalPer100g(food.kcal100g);
     setCalorieSource('open_food_facts');
     setSourceProduct(`${food.name}${food.brand ? ` - ${food.brand}` : ''} (${food.kcal100g} kcal/100g)`);
     setFoodResults([]);
@@ -91,6 +99,7 @@ export function QuickMealModal({ onClose }: Props) {
     setMealType(meal.meal_type || mealType);
     setQuantityG(meal.quantity_g?.toString() || '100');
     setCalories(meal.calories_kcal?.toString() || '');
+    setKcalPer100g(meal.calories_kcal !== null && meal.quantity_g ? meal.calories_kcal * 100 / meal.quantity_g : null);
     setCalorieSource(meal.calories_source === 'open_food_facts' ? 'open_food_facts' : 'manual');
     setSourceProduct(meal.source_product || '');
     setFoodResults([]);
@@ -211,7 +220,14 @@ export function QuickMealModal({ onClose }: Props) {
               <div>
                 <label className="label">Alimento o piatto consumato</label>
                 <div className="flex gap-2">
-                  <input type="text" className="input-field" placeholder="Es. pasta al pomodoro" value={mealName} onChange={e => setMealName(e.target.value)} />
+                  <input type="text" className="input-field" placeholder="Es. pasta al pomodoro" value={mealName} onChange={e => {
+                    setMealName(e.target.value);
+                    setKcalPer100g(null);
+                    setCalories('');
+                    setCalorieSource('manual');
+                    setSourceProduct('');
+                    setFoodResults([]);
+                  }} />
                   <button type="button" onClick={searchFood} disabled={searchingFood || !mealName.trim()} className="btn-secondary px-3 text-sm">
                     {searchingFood ? 'Cerco...' : 'Cerca'}
                   </button>
@@ -247,7 +263,7 @@ export function QuickMealModal({ onClose }: Props) {
               )}
               <div>
                 <label className="label">Calorie totali del pasto</label>
-                <input type="number" min="0" className="input-field" placeholder="Puoi correggere manualmente la stima" value={calories} onChange={e => { setCalories(e.target.value); setCalorieSource('manual'); setSourceProduct(''); }} />
+                <input type="number" min="0" className="input-field" placeholder="Puoi correggere manualmente la stima" value={calories} onChange={e => { setCalories(e.target.value); setKcalPer100g(null); setCalorieSource('manual'); setSourceProduct(''); }} />
                 <p className="text-xs text-warm-gray-500 mt-1">
                   La ricerca usa <a className="underline" href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Food Facts</a> (dati ODbL).
                   Per piatti casalinghi la stima va controllata e corretta.

@@ -16,6 +16,12 @@ const MEAL_SUGGESTIONS = [
   { name: 'Yogurt e frutta', ingredients: 'yogurt, frutta fresca, avena' },
 ];
 
+interface FoodResult {
+  name: string;
+  brand: string;
+  kcal100g: number;
+}
+
 interface MealFormData {
   name: string;
   ingredients: string;
@@ -40,12 +46,28 @@ export function SettimanaPage() {
   const [shiftType, setShiftType] = useState<string>('morning');
   const [view, setView] = useState<'plan' | 'register'>('plan');
   const [registerMeal, setRegisterMeal] = useState(false);
+  const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
+  const [searchingFood, setSearchingFood] = useState(false);
+  const [kcalPer100g, setKcalPer100g] = useState<number | null>(null);
 
   const weekDays = getWeekDays(weekStart);
 
   useEffect(() => {
     loadData();
   }, [weekStart, isDemo, user]);
+
+  useEffect(() => {
+    if (kcalPer100g === null) return;
+    const grams = Math.max(1, parseFloat(mealForm.quantityG) || 100);
+    setMealForm(prev => ({ ...prev, calories: Math.round(kcalPer100g * grams / 100).toString() }));
+  }, [mealForm.quantityG, kcalPer100g]);
+
+  useEffect(() => {
+    const normalizedName = mealForm.name.trim().toLocaleLowerCase('it');
+    const rememberedMeal = favorites.find(fav => fav.name.trim().toLocaleLowerCase('it') === normalizedName);
+    if (!rememberedMeal?.quantity_g || rememberedMeal.calories_kcal === null) return;
+    setKcalPer100g(rememberedMeal.calories_kcal * 100 / rememberedMeal.quantity_g);
+  }, [mealForm.name, favorites]);
 
   const loadData = async () => {
     setLoading(true);
@@ -74,6 +96,8 @@ export function SettimanaPage() {
   const openAddMeal = (date: string, mealType = 'lunch') => {
     setEditMeal(null);
     setMealForm({ name: '', ingredients: '', notes: '', mealType, date, quantityG: '100', calories: '' });
+    setKcalPer100g(null);
+    setFoodResults([]);
     setModal('add_meal');
   };
 
@@ -88,7 +112,69 @@ export function SettimanaPage() {
       quantityG: meal.quantity_g?.toString() ?? '100',
       calories: meal.calories_kcal?.toString() ?? '',
     });
+    setKcalPer100g(meal.calories_kcal !== null && meal.quantity_g ? meal.calories_kcal * 100 / meal.quantity_g : null);
+    setFoodResults([]);
     setModal('add_meal');
+  };
+
+  const searchFood = async () => {
+    if (!mealForm.name.trim()) return;
+    setSearchingFood(true);
+    try {
+      const fields = 'product_name,brands,nutriments';
+      const url = `https://search.openfoodfacts.org/search?q=${encodeURIComponent(mealForm.name)}&langs=it,en&page_size=8&fields=${fields}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Ricerca non disponibile');
+      const result = await response.json() as { hits?: Array<{ product_name?: string; brands?: string[] | string; nutriments?: Record<string, number> }> };
+      setFoodResults((result.hits ?? []).flatMap(product => {
+        const kcal = product.nutriments?.['energy-kcal_100g']
+          ?? (product.nutriments?.energy_100g ? product.nutriments.energy_100g / 4.184 : 0);
+        return product.product_name && kcal > 0 ? [{
+          name: product.product_name,
+          brand: Array.isArray(product.brands) ? product.brands.join(', ') : product.brands ?? '',
+          kcal100g: Math.round(kcal),
+        }] : [];
+      }));
+    } catch {
+      showToast('Ricerca alimenti non disponibile. Puoi inserire le calorie manualmente.', 'info');
+    }
+    setSearchingFood(false);
+  };
+
+  const selectFood = (food: FoodResult) => {
+    const grams = Math.max(1, parseFloat(mealForm.quantityG) || 100);
+    setKcalPer100g(food.kcal100g);
+    setMealForm(prev => ({
+      ...prev,
+      name: food.name,
+      calories: Math.round(food.kcal100g * grams / 100).toString(),
+    }));
+    setFoodResults([]);
+  };
+
+  const rememberPlannedMeal = async () => {
+    const name = mealForm.name.trim();
+    const caloriesValue = mealForm.calories ? parseInt(mealForm.calories) : null;
+    if (!user || !name || caloriesValue === null || Number.isNaN(caloriesValue)) return;
+
+    const rememberedMeal = favorites.find(fav => fav.name.trim().toLocaleLowerCase('it') === name.toLocaleLowerCase('it'));
+    const values = {
+      name,
+      meal_type: mealForm.mealType,
+      ingredients: mealForm.ingredients || null,
+      notes: mealForm.notes || null,
+      quantity_g: mealForm.quantityG ? parseFloat(mealForm.quantityG) : null,
+      calories_kcal: caloriesValue,
+      calories_source: 'manual' as const,
+    };
+
+    if (rememberedMeal) {
+      const { data } = await supabase.from('favorite_meals').update(values).eq('id', rememberedMeal.id).select().maybeSingle();
+      if (data) setFavorites(prev => prev.map(fav => fav.id === data.id ? data : fav));
+    } else {
+      const { data } = await supabase.from('favorite_meals').insert({ user_id: user.id, ...values, use_count: 0 }).select().maybeSingle();
+      if (data) setFavorites(prev => [...prev, data]);
+    }
   };
 
   const saveMeal = async () => {
@@ -162,6 +248,7 @@ export function SettimanaPage() {
       }).select().maybeSingle();
       if (data) setMeals(prev => [...prev, data]);
     }
+    await rememberPlannedMeal();
     setModal(null);
     showToast('Pasto salvato!', 'success');
   };
@@ -258,6 +345,8 @@ export function SettimanaPage() {
       quantityG: fav.quantity_g?.toString() ?? '100',
       calories: fav.calories_kcal?.toString() ?? '',
     }));
+    setKcalPer100g(fav.calories_kcal !== null && fav.quantity_g ? fav.calories_kcal * 100 / fav.quantity_g : null);
+    setFoodResults([]);
     setModal('add_meal');
   };
 
@@ -506,8 +595,28 @@ export function SettimanaPage() {
             </div>
             <div>
               <label className="label">Nome pasto *</label>
-              <input type="text" className="input-field" placeholder="Es. Pasta al pomodoro" value={mealForm.name} onChange={e => setMealForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+              <div className="flex gap-2">
+                <input type="text" className="input-field" placeholder="Es. Pasta al pomodoro" value={mealForm.name} onChange={e => {
+                  setKcalPer100g(null);
+                  setFoodResults([]);
+                  setMealForm(p => ({ ...p, name: e.target.value, calories: '' }));
+                }} autoFocus />
+                <button type="button" onClick={searchFood} disabled={searchingFood || !mealForm.name.trim()} className="btn-secondary px-3 text-sm">
+                  {searchingFood ? 'Cerco...' : 'Cerca calorie'}
+                </button>
+              </div>
             </div>
+            {foodResults.length > 0 && (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                <label className="label">Scegli il prodotto corretto</label>
+                {foodResults.map((food, index) => (
+                  <button key={`${food.name}-${index}`} type="button" onClick={() => selectFood(food)} className="w-full text-left bg-white rounded-xl p-3 border border-amber-200">
+                    <p className="text-sm font-semibold text-warm-gray-800">{food.name}</p>
+                    <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g</p>
+                  </button>
+                ))}
+              </div>
+            )}
             {favorites.filter(fav => fav.calories_kcal !== null && (!mealForm.name.trim() || fav.name.toLocaleLowerCase('it').includes(mealForm.name.trim().toLocaleLowerCase('it')))).slice(0, 3).length > 0 && (
               <div>
                 <label className="label">I tuoi pasti già memorizzati</label>
@@ -525,7 +634,7 @@ export function SettimanaPage() {
               <label className="label">Suggerimenti coerenti con il tuo percorso</label>
               <div className="grid grid-cols-2 gap-2">
                 {MEAL_SUGGESTIONS.map(suggestion => (
-                  <button key={suggestion.name} onClick={() => setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients }))}
+                  <button key={suggestion.name} onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients, calories: '' })); }}
                     className="text-left text-xs bg-amber-50 border border-amber-200 rounded-xl p-2 text-amber-900">
                     {suggestion.name}
                   </button>
@@ -544,10 +653,12 @@ export function SettimanaPage() {
               </div>
               <div>
                 <label className="label">Calorie totali</label>
-                <input type="number" min="0" className="input-field" placeholder="Es. 450" value={mealForm.calories} onChange={e => setMealForm(p => ({ ...p, calories: e.target.value }))} />
+                <input type="number" min="0" className="input-field" placeholder="Si compilano con la ricerca" value={mealForm.calories} onChange={e => { setKcalPer100g(null); setMealForm(p => ({ ...p, calories: e.target.value })); }} />
               </div>
             </div>
-            <p className="text-xs text-warm-gray-500">Quando spunti il pasto come consumato, queste calorie entrano nel riepilogo giornaliero.</p>
+            <p className="text-xs text-warm-gray-500">
+              Cerca il prodotto e selezionalo: le calorie si aggiornano automaticamente cambiando i grammi. La ricerca usa Open Food Facts; per piatti casalinghi controlla la stima.
+            </p>
             <div>
               <label className="label">Note</label>
               <input type="text" className="input-field" placeholder="Opzionale..." value={mealForm.notes} onChange={e => setMealForm(p => ({ ...p, notes: e.target.value }))} />
