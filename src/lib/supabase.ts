@@ -122,6 +122,10 @@ export interface PlannedMeal {
   notes: string | null;
   quantity_g: number | null;
   calories_kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fiber_g: number | null;
   is_completed: boolean;
   favorite_meal_id: string | null;
   created_at: string;
@@ -139,6 +143,10 @@ export interface FavoriteMeal {
   use_count: number;
   quantity_g: number | null;
   calories_kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fiber_g: number | null;
   calories_source: 'open_food_facts' | 'manual' | null;
   source_product: string | null;
   created_at: string;
@@ -319,6 +327,10 @@ export interface HungerSatietyEntry {
   meal_name: string | null;
   quantity_g: number | null;
   calories_kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fiber_g: number | null;
   calories_source: 'open_food_facts' | 'manual' | null;
   source_product: string | null;
   planned_meal_id: string | null;
