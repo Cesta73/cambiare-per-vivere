@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
-import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Droplets, Activity, Moon, Bell } from 'lucide-react';
+import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Droplets, Activity, Moon, Bell, Flame } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend
 } from 'recharts';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
-import type { BodyMeasurement, ActivityEntry, HydrationEntry, SleepEntry, DailyCheckin } from '../../lib/supabase';
+import type { BodyMeasurement, ActivityEntry, HydrationEntry, SleepEntry, DailyCheckin, HungerSatietyEntry } from '../../lib/supabase';
 import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 
-type ProgressTab = 'misure' | 'attivita' | 'abitudini';
+type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
 
 export function ProgressiPage() {
   const { user, isDemo, profile, demoData, showToast } = useApp();
@@ -19,6 +19,8 @@ export function ProgressiPage() {
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
+  const [meals, setMeals] = useState<HungerSatietyEntry[]>([]);
+  const [caloriePeriod, setCaloriePeriod] = useState<'days' | 'weeks'>('days');
   const [loading, setLoading] = useState(true);
   const [addWeightModal, setAddWeightModal] = useState(false);
 
@@ -48,14 +50,16 @@ export function ProgressiPage() {
       setActivities(demoData.activities);
       setCheckins([]);
     } else if (user) {
-      const [measRes, actRes, checkinRes] = await Promise.all([
+      const [measRes, actRes, checkinRes, mealRes] = await Promise.all([
         supabase.from('body_measurements').select('*').eq('user_id', user.id).order('measured_at'),
         supabase.from('activity_entries').select('*').eq('user_id', user.id).order('activity_date', { ascending: false }).limit(90),
         supabase.from('daily_checkins').select('*').eq('user_id', user.id).order('checkin_date').limit(30),
+        supabase.from('hunger_satiety_entries').select('*').eq('user_id', user.id).order('entry_datetime', { ascending: false }).limit(300),
       ]);
       setMeasurements(measRes.data ?? []);
       setActivities(actRes.data ?? []);
       setCheckins(checkinRes.data ?? []);
+      setMeals(mealRes.data ?? []);
     }
     setLoading(false);
   };
@@ -89,6 +93,40 @@ export function ProgressiPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-8)
     .map(([date, min]) => ({ date: formatDateShort(date), min }));
+
+  const calorieTarget = profile?.daily_calorie_target ?? 2200;
+  const calorieByDay = new Map<string, { eaten: number; burned: number }>();
+  meals.forEach(meal => {
+    const date = dateToISO(new Date(meal.entry_datetime));
+    const current = calorieByDay.get(date) ?? { eaten: 0, burned: 0 };
+    current.eaten += meal.calories_kcal ?? 0;
+    calorieByDay.set(date, current);
+  });
+  activities.forEach(activity => {
+    const current = calorieByDay.get(activity.activity_date) ?? { eaten: 0, burned: 0 };
+    current.burned += activity.calories_burned_kcal ?? 0;
+    calorieByDay.set(activity.activity_date, current);
+  });
+  const calorieDailyData = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (13 - index));
+    const key = dateToISO(date);
+    const values = calorieByDay.get(key) ?? { eaten: 0, burned: 0 };
+    return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, bruciate: values.burned };
+  });
+  const calorieWeeklyMap = calorieDailyData.reduce<Record<string, { obiettivo: number; mangiate: number; bruciate: number }>>((acc, day) => {
+    const parts = day.label.split('/');
+    const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    const key = dateToISO(getWeekStart(date));
+    acc[key] ??= { obiettivo: 0, mangiate: 0, bruciate: 0 };
+    acc[key].obiettivo += day.obiettivo;
+    acc[key].mangiate += day.mangiate;
+    acc[key].bruciate += day.bruciate;
+    return acc;
+  }, {});
+  const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({ date: formatDateShort(date), ...values }));
+  const calorieChartData = caloriePeriod === 'days' ? calorieDailyData : calorieWeeklyData;
+  const todayCalories = calorieDailyData[calorieDailyData.length - 1];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -124,6 +162,7 @@ export function ProgressiPage() {
       <div className="flex gap-1 bg-warm-gray-100 rounded-xl p-1">
         {([
           { id: 'misure', label: 'Misure' },
+          { id: 'calorie', label: 'Calorie' },
           { id: 'attivita', label: 'Attività' },
           { id: 'abitudini', label: 'Costanza' },
         ] as const).map(t => (
@@ -247,6 +286,42 @@ export function ProgressiPage() {
         </div>
       )}
 
+      {tab === 'calorie' && (
+        <div className="space-y-4">
+          <div className="card bg-gradient-to-br from-amber-50 to-sage-50 border-amber-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Flame size={20} className="text-amber-600" />
+              <h2 className="font-semibold text-warm-gray-800">Bilancio indicativo di oggi</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div><p className="text-xs text-warm-gray-500">Obiettivo</p><p className="font-bold text-petrol-700">{todayCalories.obiettivo}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Mangiate</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Bruciate</p><p className="font-bold text-sage-700">{todayCalories.bruciate}</p></div>
+            </div>
+            <p className="text-xs text-warm-gray-500 mt-3">Calorie e attività sono stime informative, non prescrizioni mediche.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
+            <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
+            <button onClick={() => setCaloriePeriod('weeks')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'weeks' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Settimane</button>
+          </div>
+          <div className="card">
+            <h2 className="font-semibold text-warm-gray-800 mb-4">Obiettivo, mangiate e bruciate</h2>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={calorieChartData} margin={{ left: -15, right: 5, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#8d877a' }} unit=" kcal" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="obiettivo" name="Obiettivo" fill="#236874" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="mangiate" name="Mangiate" fill="#d4a853" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="bruciate" name="Bruciate" fill="#5B8B76" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {tab === 'attivita' && (
         <div className="space-y-4">
           {activityData.length >= 2 && (
@@ -279,6 +354,9 @@ export function ProgressiPage() {
                     </div>
                     {a.perceived_effort && (
                       <span className="text-xs text-warm-gray-500 bg-warm-gray-100 px-2 py-1 rounded-lg">Sforzo: {a.perceived_effort}/10</span>
+                    )}
+                    {a.calories_burned_kcal && (
+                      <span className="text-xs text-sage-700 bg-sage-50 px-2 py-1 rounded-lg">~{a.calories_burned_kcal} kcal</span>
                     )}
                   </div>
                 ))}

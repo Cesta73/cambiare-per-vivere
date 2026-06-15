@@ -7,6 +7,12 @@ import { MEAL_TYPE_LABELS } from '../../lib/utils';
 
 interface Props { onClose: () => void; }
 
+interface FoodResult {
+  name: string;
+  brand: string;
+  kcal100g: number;
+}
+
 export function QuickMealModal({ onClose }: Props) {
   const { user, showToast } = useApp();
   const [step, setStep] = useState<'pre' | 'post'>('pre');
@@ -21,6 +27,46 @@ export function QuickMealModal({ onClose }: Props) {
   const [postStopped, setPostStopped] = useState<boolean | null>(null);
   const [postNotes, setPostNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mealName, setMealName] = useState('');
+  const [quantityG, setQuantityG] = useState('100');
+  const [calories, setCalories] = useState('');
+  const [calorieSource, setCalorieSource] = useState<'open_food_facts' | 'manual'>('manual');
+  const [sourceProduct, setSourceProduct] = useState('');
+  const [foodResults, setFoodResults] = useState<FoodResult[]>([]);
+  const [searchingFood, setSearchingFood] = useState(false);
+
+  const searchFood = async () => {
+    if (!mealName.trim()) return;
+    setSearchingFood(true);
+    try {
+      const fields = 'product_name,brands,nutriments';
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(mealName)}&search_simple=1&action=process&json=1&page_size=8&fields=${fields}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Ricerca non disponibile');
+      const result = await response.json() as { products?: Array<{ product_name?: string; brands?: string; nutriments?: Record<string, number> }> };
+      setFoodResults((result.products ?? []).flatMap(product => {
+        const kcal = product.nutriments?.['energy-kcal_100g']
+          ?? (product.nutriments?.energy_100g ? product.nutriments.energy_100g / 4.184 : 0);
+        return product.product_name && kcal > 0 ? [{
+          name: product.product_name,
+          brand: product.brands ?? '',
+          kcal100g: Math.round(kcal),
+        }] : [];
+      }));
+    } catch {
+      showToast('Ricerca alimenti non disponibile. Inserisci le calorie manualmente.', 'info');
+    }
+    setSearchingFood(false);
+  };
+
+  const selectFood = (food: FoodResult) => {
+    const grams = Math.max(1, parseFloat(quantityG) || 100);
+    setMealName(food.name);
+    setCalories(Math.round(food.kcal100g * grams / 100).toString());
+    setCalorieSource('open_food_facts');
+    setSourceProduct(`${food.name}${food.brand ? ` - ${food.brand}` : ''} (${food.kcal100g} kcal/100g)`);
+    setFoodResults([]);
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -42,6 +88,11 @@ export function QuickMealModal({ onClose }: Props) {
         post_ate_calmly: postCalmly,
         post_stopped_at_right_time: postStopped,
         post_notes: postNotes || null,
+        meal_name: mealName || null,
+        quantity_g: quantityG ? parseFloat(quantityG) : null,
+        calories_kcal: calories ? parseInt(calories) : null,
+        calories_source: calories ? calorieSource : null,
+        source_product: sourceProduct || null,
     });
     if (error) {
       showToast(`Pasto non registrato: ${error.message}`, 'error');
@@ -98,6 +149,39 @@ export function QuickMealModal({ onClose }: Props) {
 
         {step === 'post' && (
           <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+              <div>
+                <label className="label">Alimento o piatto consumato</label>
+                <div className="flex gap-2">
+                  <input type="text" className="input-field" placeholder="Es. pasta al pomodoro" value={mealName} onChange={e => setMealName(e.target.value)} />
+                  <button type="button" onClick={searchFood} disabled={searchingFood || !mealName.trim()} className="btn-secondary px-3 text-sm">
+                    {searchingFood ? 'Cerco...' : 'Cerca'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="label">Quantità indicativa (grammi)</label>
+                <input type="number" min="1" className="input-field" value={quantityG} onChange={e => setQuantityG(e.target.value)} />
+              </div>
+              {foodResults.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {foodResults.map((food, index) => (
+                    <button key={`${food.name}-${index}`} type="button" onClick={() => selectFood(food)} className="w-full text-left bg-white rounded-xl p-3 border border-amber-200">
+                      <p className="text-sm font-semibold text-warm-gray-800">{food.name}</p>
+                      <p className="text-xs text-warm-gray-500">{food.brand || 'Marca non indicata'} · {food.kcal100g} kcal/100g</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div>
+                <label className="label">Calorie totali del pasto</label>
+                <input type="number" min="0" className="input-field" placeholder="Puoi correggere manualmente la stima" value={calories} onChange={e => { setCalories(e.target.value); setCalorieSource('manual'); setSourceProduct(''); }} />
+                <p className="text-xs text-warm-gray-500 mt-1">
+                  La ricerca usa <a className="underline" href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Food Facts</a> (dati ODbL).
+                  Per piatti casalinghi la stima va controllata e corretta.
+                </p>
+              </div>
+            </div>
             <ScoreButtons label="Sazietà (0=ancora fame, 10=pieno)" value={postSatiety} onChange={setPostSatiety} min={0} max={10} colorScale />
             <ScoreButtons label="Soddisfazione (0=per nulla, 10=molto)" value={postSatisfaction} onChange={setPostSatisfaction} min={0} max={10} colorScale />
             <div>

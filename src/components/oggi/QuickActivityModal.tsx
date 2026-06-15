@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
@@ -7,13 +7,28 @@ import { todayISO, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 interface Props { onClose: () => void; }
 
 export function QuickActivityModal({ onClose }: Props) {
-  const { user, showToast } = useApp();
+  const { user, profile, showToast } = useApp();
   const [type, setType] = useState('walking');
   const [name, setName] = useState('');
   const [duration, setDuration] = useState('30');
   const [effort, setEffort] = useState<string>('');
   const [pain, setPain] = useState('');
   const [loading, setLoading] = useState(false);
+  const [weightKg, setWeightKg] = useState<number | null>(profile?.start_weight ?? null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('body_measurements').select('weight_kg').eq('user_id', user.id)
+      .not('weight_kg', 'is', null).order('measured_at', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => setWeightKg(data?.weight_kg ?? profile?.start_weight ?? null));
+  }, [profile?.start_weight, user]);
+
+  const estimatedCalories = useMemo(() => {
+    if (!weightKg || !duration || parseInt(duration) <= 0) return null;
+    const baseMet: Record<string, number> = { walking: 4, aerobic: 6, strength: 5, mobility: 2.5, daily: 3, other: 4 };
+    const effortFactor = effort ? 0.7 + parseInt(effort) * 0.06 : 1;
+    return Math.round((baseMet[type] ?? 4) * effortFactor * weightKg * (parseInt(duration) / 60));
+  }, [duration, effort, type, weightKg]);
 
   const handleSave = async () => {
     if (!duration || parseInt(duration) <= 0) return;
@@ -32,6 +47,8 @@ export function QuickActivityModal({ onClose }: Props) {
         perceived_effort: effort ? parseInt(effort) : null,
         pain_or_difficulty: pain || null,
         notes: null,
+        calories_burned_kcal: estimatedCalories,
+        calories_source: estimatedCalories ? 'met_estimate' : null,
     });
     if (error) {
       showToast(`Attività non registrata: ${error.message}`, 'error');
@@ -75,6 +92,10 @@ export function QuickActivityModal({ onClose }: Props) {
         <div>
           <label className="label">Dolore o difficoltà (opzionale)</label>
           <input type="text" className="input-field" placeholder="Es. Lieve fastidio al ginocchio" value={pain} onChange={e => setPain(e.target.value)} />
+        </div>
+        <div className="bg-sage-50 border border-sage-200 rounded-xl p-3">
+          <p className="text-sm font-semibold text-sage-800">Stima calorie bruciate: {estimatedCalories ?? '—'} kcal</p>
+          <p className="text-xs text-sage-700 mt-1">Stima indicativa basata su peso, durata, tipo di attività e sforzo percepito.</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
           Segui le indicazioni ricevute dai tuoi professionisti, soprattutto in presenza di dolori articolari da carico.
