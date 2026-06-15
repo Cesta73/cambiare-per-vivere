@@ -19,6 +19,7 @@ export function ProfilePage({ onBack }: Props) {
   const [hideWeight, setHideWeight] = useState(profile?.hide_weight_dashboard ?? false);
   const [hideBmi, setHideBmi] = useState(profile?.hide_bmi ?? false);
   const [usesCpap, setUsesCpap] = useState(profile?.uses_cpap ?? false);
+  const [calorieTarget, setCalorieTarget] = useState(profile?.daily_calorie_target?.toString() ?? '2200');
 
   const bmi = profile?.height_cm && profile?.discharge_weight
     ? calculateBMI(profile.discharge_weight, profile.height_cm)
@@ -33,6 +34,7 @@ export function ProfilePage({ onBack }: Props) {
       hide_weight_dashboard: hideWeight,
       hide_bmi: hideBmi,
       uses_cpap: usesCpap,
+      daily_calorie_target: calorieTarget ? parseInt(calorieTarget) : 2200,
     });
     showToast(error ? `Profilo non aggiornato: ${error}` : 'Profilo aggiornato!', error ? 'error' : 'success');
     setSaving(false);
@@ -112,6 +114,11 @@ export function ProfilePage({ onBack }: Props) {
         <div>
           <label className="label">Obiettivo personale</label>
           <textarea className="input-field h-20 resize-none" value={goalDesc} onChange={e => setGoalDesc(e.target.value)} placeholder="Concordato con i tuoi professionisti..." />
+        </div>
+        <div>
+          <label className="label">Obiettivo calorico giornaliero</label>
+          <input type="number" className="input-field" min="800" max="6000" step="50" value={calorieTarget} onChange={e => setCalorieTarget(e.target.value)} />
+          <p className="text-xs text-warm-gray-400 mt-1">Valore indicativo concordato: 2200 kcal. Modificalo solo su indicazione del professionista.</p>
         </div>
       </div>
 

@@ -56,6 +56,7 @@ export interface Profile {
   hide_bmi: boolean;
   is_demo: boolean;
   dark_mode: boolean;
+  daily_calorie_target: number;
   created_at: string;
   updated_at: string;
 }
@@ -171,6 +172,8 @@ export interface ActivityEntry {
   perceived_effort: number | null;
   pain_or_difficulty: string | null;
   notes: string | null;
+  calories_burned_kcal: number | null;
+  calories_source: 'met_estimate' | 'manual' | null;
   created_at: string;
   updated_at: string;
 }
@@ -307,6 +310,11 @@ export interface HungerSatietyEntry {
   post_stopped_at_right_time: boolean | null;
   post_notes: string | null;
   shift_type: string | null;
+  meal_name: string | null;
+  quantity_g: number | null;
+  calories_kcal: number | null;
+  calories_source: 'open_food_facts' | 'manual' | null;
+  source_product: string | null;
   created_at: string;
   updated_at: string;
 }
