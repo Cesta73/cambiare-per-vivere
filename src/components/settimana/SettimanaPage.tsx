@@ -6,6 +6,7 @@ import type { PlannedMeal, WorkShift, FavoriteMeal } from '../../lib/supabase';
 import { getWeekStart, getWeekDays, dateToISO, formatDateShort, getDayNameShort, SHIFT_LABELS, SHIFT_COLORS, MEAL_TYPE_LABELS, todayISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { QuickMealModal } from '../oggi/QuickMealModal';
+import { RecipeBuilderModal } from './RecipeBuilderModal';
 
 const MEAL_TYPES = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
 const SHIFT_TYPES = ['morning', 'afternoon', 'night', 'rest', 'custom'] as const;
@@ -48,7 +49,7 @@ export function SettimanaPage() {
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string>(todayISO());
-  const [modal, setModal] = useState<'add_meal' | 'add_shift' | 'favorites' | null>(null);
+  const [modal, setModal] = useState<'add_meal' | 'add_shift' | 'favorites' | 'recipe' | null>(null);
   const [editMeal, setEditMeal] = useState<PlannedMeal | null>(null);
   const [mealForm, setMealForm] = useState<MealFormData>({ name: '', ingredients: '', notes: '', mealType: 'lunch', date: todayISO(), quantityG: '100', calories: '', protein: '', carbs: '', fat: '', fiber: '' });
   const [shiftType, setShiftType] = useState<string>('morning');
@@ -511,6 +512,7 @@ export function SettimanaPage() {
       <div className="flex items-center justify-between">
         <h1 className="section-title">Pasti e turni</h1>
         <div className="flex gap-2">
+          <button onClick={() => setModal('recipe')} className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100">Crea ricetta</button>
           <button onClick={copyPrevWeek} className="text-xs text-sage-600 font-medium hover:underline">Copia settimana prec.</button>
         </div>
       </div>
@@ -802,6 +804,7 @@ export function SettimanaPage() {
         </Modal>
       )}
       {registerMeal && <QuickMealModal onClose={() => setRegisterMeal(false)} />}
+      {modal === 'recipe' && <RecipeBuilderModal onClose={() => setModal(null)} onSaved={loadData} />}
     </div>
   );
 }
