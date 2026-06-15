@@ -26,7 +26,6 @@ interface RecipeIngredientDraft extends FoodResult {
 export function RecipeBuilderModal({ onClose, onSaved }: Props) {
   const { user, showToast } = useApp();
   const [recipeName, setRecipeName] = useState('');
-  const [finishedWeight, setFinishedWeight] = useState('');
   const [notes, setNotes] = useState('');
   const [ingredientQuery, setIngredientQuery] = useState('');
   const [ingredientQuantity, setIngredientQuantity] = useState('100');
@@ -52,7 +51,7 @@ export function RecipeBuilderModal({ onClose, onSaved }: Props) {
     };
   }, { weight: 0, calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
-  const finalWeight = Math.max(1, parseFloat(finishedWeight) || totals.weight || 1);
+  const finalWeight = Math.max(1, totals.weight || 1);
   const per100 = {
     calories: Math.round(totals.calories * 100 / finalWeight),
     protein: totals.protein * 100 / finalWeight,
@@ -116,7 +115,7 @@ export function RecipeBuilderModal({ onClose, onSaved }: Props) {
   };
 
   const saveRecipe = async () => {
-    if (!user || !recipeName.trim() || ingredients.length === 0 || !finishedWeight) return;
+    if (!user || !recipeName.trim() || ingredients.length === 0) return;
     setSaving(true);
     const recipeValues = {
       user_id: user.id,
@@ -237,17 +236,12 @@ export function RecipeBuilderModal({ onClose, onSaved }: Props) {
           ))}
         </div>
 
-        <div>
-          <label className="label">Peso finale del piatto cucinato *</label>
-          <input type="number" min="1" className="input-field" value={finishedWeight} onChange={e => setFinishedWeight(e.target.value)} placeholder={`Es. ${Math.round(totals.weight)} g`} />
-          <p className="text-xs text-warm-gray-500 mt-1">Pesalo dopo la cottura: servirà per calcolare correttamente ogni porzione.</p>
-        </div>
-
-        {ingredients.length > 0 && finishedWeight && (
+        {ingredients.length > 0 && (
           <div className="card-sm bg-sage-50 border-sage-200">
             <p className="font-semibold text-sage-800">Valori della ricetta</p>
-            <p className="text-sm text-sage-700 mt-1">Totale: {Math.round(totals.calories)} kcal · peso finale {Math.round(finalWeight)} g</p>
+            <p className="text-sm text-sage-700 mt-1">Totale: {Math.round(totals.calories)} kcal · dosi complessive {Math.round(finalWeight)} g</p>
             <p className="text-sm text-sage-700">Per 100 g: {per100.calories} kcal · P {per100.protein.toFixed(1)}g · C {per100.carbs.toFixed(1)}g · G {per100.fat.toFixed(1)}g · Fibre {per100.fiber.toFixed(1)}g</p>
+            <p className="text-xs text-sage-700 mt-2">Quando mangerai questa ricetta, indica soltanto i grammi della porzione: calorie e nutrienti verranno calcolati automaticamente.</p>
           </div>
         )}
 
@@ -255,7 +249,7 @@ export function RecipeBuilderModal({ onClose, onSaved }: Props) {
           <label className="label">Note</label>
           <input className="input-field" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opzionale..." />
         </div>
-        <button onClick={saveRecipe} disabled={saving || !recipeName.trim() || ingredients.length === 0 || !finishedWeight} className="btn-primary w-full flex items-center justify-center gap-2">
+        <button onClick={saveRecipe} disabled={saving || !recipeName.trim() || ingredients.length === 0} className="btn-primary w-full flex items-center justify-center gap-2">
           <Plus size={17} /> {saving ? 'Salvataggio...' : 'Salva ricetta'}
         </button>
       </div>
