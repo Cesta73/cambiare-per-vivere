@@ -7,9 +7,8 @@ import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { DailyCheckin, HabitDefinition, HabitLog, WorkShift } from '../../lib/supabase';
-import { todayISO, formatDateLong, getTodayPhrase, getGreeting, SHIFT_LABELS, SHIFT_COLORS } from '../../lib/utils';
+import { todayISO, formatDateLong, getTodayPhrase, getGreeting, SHIFT_LABELS } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
-import { ScoreButtons } from '../ui/ScoreButtons';
 import { QuickWeightModal } from './QuickWeightModal';
 import { QuickWaterModal } from './QuickWaterModal';
 import { QuickMoodModal } from './QuickMoodModal';
@@ -123,14 +122,14 @@ export function OggiPage() {
   const waterPct = Math.min((waterMl / 2000) * 100, 100);
 
   const quickActions = [
-    { id: 'weight', icon: Scale, label: 'Peso', color: 'bg-petrol-50 text-petrol-700' },
-    { id: 'meal', icon: Utensils, label: 'Pasto', color: 'bg-amber-50 text-amber-700' },
-    { id: 'water', icon: Droplets, label: 'Acqua', color: 'bg-blue-50 text-blue-700' },
-    { id: 'activity', icon: Dumbbell, label: 'Attività', color: 'bg-green-50 text-green-700' },
-    { id: 'mood', icon: Heart, label: 'Come sto', color: 'bg-rose-50 text-rose-700' },
-    { id: 'diary', icon: BookOpen, label: 'Diario', color: 'bg-warm-gray-50 text-warm-gray-700' },
-    { id: 'dharma', icon: Sparkles, label: 'Dharma', color: 'bg-amber-50 text-amber-800' },
-    { id: 'cammino', icon: Route, label: 'Mio Cammino', color: 'bg-orange-50 text-orange-800' },
+    { id: 'weight', icon: Scale, label: 'Peso', color: 'action-petrol' },
+    { id: 'meal', icon: Utensils, label: 'Pasto', color: 'action-amber' },
+    { id: 'water', icon: Droplets, label: 'Acqua', color: 'action-water' },
+    { id: 'activity', icon: Dumbbell, label: 'Attività', color: 'action-sage' },
+    { id: 'mood', icon: Heart, label: 'Come sto', color: 'action-rose' },
+    { id: 'diary', icon: BookOpen, label: 'Diario', color: 'action-ink' },
+    { id: 'dharma', icon: Sparkles, label: 'Dharma', color: 'action-gold' },
+    { id: 'cammino', icon: Route, label: 'Mio Cammino', color: 'action-earth' },
   ] as const;
 
   if (loading) {
@@ -146,19 +145,27 @@ export function OggiPage() {
   return (
     <div className="space-y-4 pb-4">
       {/* Header */}
-      <div className="card bg-gradient-to-br from-sage-600 to-petrol-600 text-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold">{getGreeting(profile?.display_name ?? null)}</h1>
-            <p className="text-sage-200 text-sm mt-0.5 capitalize">{formatDateLong(today)}</p>
+      <div className="jarvis-hero">
+        <div className="hero-compass-lines" aria-hidden="true" />
+        <div className="flex items-start justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="/jarvis-emblem.png" alt="" className="w-14 h-14 rounded-full shadow-lg ring-1 ring-amber-200/40 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="eyebrow text-amber-200 mb-1">Jarvis · bussola quotidiana</p>
+              <h1 className="font-display text-2xl text-white leading-tight">{getGreeting(profile?.display_name ?? null)}</h1>
+              <p className="text-sage-200 text-xs mt-1 capitalize">{formatDateLong(today)}</p>
+            </div>
           </div>
           {shift && (
-            <span className={`text-xs font-semibold px-3 py-1 rounded-full bg-white/20 text-white`}>
+            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-cream-50 flex-shrink-0">
               {shift.custom_label || SHIFT_LABELS[shift.shift_type]}
             </span>
           )}
         </div>
-        <p className="mt-3 text-sm text-sage-100 italic leading-relaxed">"{getTodayPhrase()}"</p>
+        <div className="hero-guidance relative z-10">
+          <span className="hero-guidance-mark">✦</span>
+          <p className="text-sm text-sage-50 leading-relaxed">{getTodayPhrase()}</p>
+        </div>
       </div>
 
       {/* Demo Banner */}
@@ -259,9 +266,9 @@ export function OggiPage() {
                 else if (id === 'cammino') setActiveTab('cammino');
                 else setModal(id as typeof modal);
               }}
-              className={`${color} rounded-2xl p-5 min-h-24 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform`}
+              className={`quick-action ${color}`}
             >
-              <Icon size={24} />
+              <span className="quick-action-icon"><Icon size={22} strokeWidth={1.8} /></span>
               <span className="text-xs font-semibold">{label}</span>
             </button>
           ))}

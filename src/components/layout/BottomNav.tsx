@@ -14,8 +14,8 @@ export function BottomNav() {
   const { activeTab, setActiveTab } = useApp();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-warm-gray-100 z-40 safe-bottom">
-      <div className="max-w-lg mx-auto flex justify-around px-1 py-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom px-3 pb-2 pointer-events-none">
+      <div className="bottom-dock max-w-lg mx-auto flex justify-around px-1.5 py-1.5 pointer-events-auto">
         {NAV_ITEMS.map(({ tab, label, Icon }) => (
           <button
             key={tab}
@@ -24,8 +24,8 @@ export function BottomNav() {
             aria-label={label}
             aria-current={activeTab === tab ? 'page' : undefined}
           >
-            <Icon size={22} />
-            <span className="text-xs font-medium">{label}</span>
+            <span className="nav-icon-frame"><Icon size={20} strokeWidth={1.9} /></span>
+            <span className="text-[10px] font-semibold tracking-wide">{label}</span>
           </button>
         ))}
       </div>

@@ -18,10 +18,10 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-cream-50 flex items-center justify-center">
+      <div className="min-h-screen app-backdrop flex items-center justify-center">
         <div className="text-center">
-          <div className="w-14 h-14 bg-sage-600 rounded-2xl mx-auto mb-4 animate-pulse" />
-          <p className="text-warm-gray-500 text-sm">Caricamento...</p>
+          <img src="/jarvis-emblem.png" alt="" className="w-20 h-20 rounded-full mx-auto mb-4 animate-pulse shadow-2xl" />
+          <p className="text-petrol-800 text-sm font-medium tracking-wide">Sto preparando il tuo spazio...</p>
         </div>
       </div>
     );
@@ -45,8 +45,10 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-cream-50">
-      <main className="max-w-lg mx-auto px-4 pt-6 pb-24">
+    <div className="min-h-screen app-backdrop app-shell">
+      <div className="ambient-orb ambient-orb-one" aria-hidden="true" />
+      <div className="ambient-orb ambient-orb-two" aria-hidden="true" />
+      <main className="app-main max-w-lg mx-auto px-4 pt-5 pb-28 relative z-10">
         {activeTab === 'oggi' && <OggiPage />}
         {activeTab === 'registro' && <RegistroPage />}
         {activeTab === 'settimana' && <SettimanaPage />}
