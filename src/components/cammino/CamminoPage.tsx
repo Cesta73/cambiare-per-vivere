@@ -32,7 +32,7 @@ const addDays = (date: Date, amount: number) => {
 };
 
 export function CamminoPage({ onBack }: Props) {
-  const { user, showToast } = useApp();
+  const { user, showToast, dataVersion } = useApp();
   const [settings, setSettings] = useState<CaminoSettings | null>(null);
   const [workouts, setWorkouts] = useState<CaminoWorkout[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export function CamminoPage({ onBack }: Props) {
 
   useEffect(() => {
     void loadData();
-  }, [user]);
+  }, [user, dataVersion]);
 
   const loadData = async () => {
     if (!user) return;

@@ -19,7 +19,7 @@ import type {
   WorkShift,
 } from '../lib/supabase';
 
-export type AppTab = 'oggi' | 'settimana' | 'diario' | 'progressi' | 'altro' | 'cammino' | 'dharma';
+export type AppTab = 'oggi' | 'registro' | 'settimana' | 'diario' | 'progressi' | 'altro' | 'cammino' | 'dharma';
 
 interface Toast {
   id: string;
@@ -68,6 +68,8 @@ interface AppContextValue {
   isLoading: boolean;
   activeTab: AppTab;
   setActiveTab: (tab: AppTab) => void;
+  dataVersion: number;
+  refreshData: () => void;
   toasts: Toast[];
   showToast: (message: string, type?: Toast['type']) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -84,6 +86,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AppTab>('oggi');
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -124,6 +127,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [loadProfile]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const tables = [
+      'body_measurements',
+      'daily_checkins',
+      'journal_entries',
+      'hunger_satiety_entries',
+      'activity_entries',
+      'hydration_entries',
+      'sleep_entries',
+      'medication_logs',
+      'reminders',
+      'camino_workouts',
+      'contemplative_sessions',
+      'jarvis_events',
+    ];
+
+    const channel = tables.reduce(
+      (current, table) => current.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table,
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => setDataVersion(version => version + 1),
+      ),
+      supabase.channel(`personal-data-${user.id}`),
+    );
+
+    channel.subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     return { error: error?.message ?? null };
@@ -161,6 +202,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       activeTab,
       setActiveTab,
+      dataVersion,
+      refreshData: () => setDataVersion(version => version + 1),
       toasts,
       showToast,
       signIn,

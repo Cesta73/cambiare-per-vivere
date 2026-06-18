@@ -11,6 +11,7 @@ import { CamminoPage } from './components/cammino/CamminoPage';
 import { RitrovaIlCentroPage } from './components/centro/RitrovaIlCentroPage';
 import { ToastContainer } from './components/ui/Toast';
 import { ReminderWatcher } from './components/reminders/ReminderWatcher';
+import { RegistroPage } from './components/registro/RegistroPage';
 
 function AppContent() {
   const { user, profile, isDemo, isLoading, activeTab, setActiveTab } = useApp();
@@ -47,6 +48,7 @@ function AppContent() {
     <div className="min-h-screen bg-cream-50">
       <main className="max-w-lg mx-auto px-4 pt-6 pb-24">
         {activeTab === 'oggi' && <OggiPage />}
+        {activeTab === 'registro' && <RegistroPage />}
         {activeTab === 'settimana' && <SettimanaPage />}
         {activeTab === 'diario' && <DiarioPage />}
         {activeTab === 'progressi' && <ProgressiPage />}

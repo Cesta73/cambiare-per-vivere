@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Check, X, AlertCircle, Pill } from 'lucide-react';
+import { ArrowLeft, Plus, Check, X, AlertCircle, Pill, Power } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { MedicationReminder, MedicationLog } from '../../lib/supabase';
@@ -27,7 +27,7 @@ const CAT_LABELS: Record<string, string> = {
 };
 
 export function MedicationsPage({ onBack }: Props) {
-  const { user, isDemo, demoData, showToast } = useApp();
+  const { user, isDemo, demoData, showToast, dataVersion } = useApp();
   const [reminders, setReminders] = useState<MedicationReminder[]>([]);
   const [todayLogs, setTodayLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export function MedicationsPage({ onBack }: Props) {
 
   useEffect(() => {
     loadData();
-  }, [isDemo, user]);
+  }, [isDemo, user, dataVersion]);
 
   const loadData = async () => {
     setLoading(true);
@@ -145,6 +145,27 @@ export function MedicationsPage({ onBack }: Props) {
     showToast('Promemoria aggiunto!', 'success');
   };
 
+  const deactivateReminder = async (reminder: MedicationReminder) => {
+    if (!confirm(`Disattivare i promemoria di "${reminder.name}"?`)) return;
+    if (isDemo) {
+      setReminders(prev => prev.filter(item => item.id !== reminder.id));
+      return;
+    }
+    if (!user) return;
+
+    const { error } = await supabase.from('medication_reminders').update({ is_active: false }).eq('id', reminder.id);
+    if (!error) {
+      await supabase
+        .from('reminders')
+        .update({ is_enabled: false })
+        .eq('user_id', user.id)
+        .eq('entity_type', 'medication')
+        .eq('entity_id', reminder.id);
+      setReminders(prev => prev.filter(item => item.id !== reminder.id));
+    }
+    showToast(error ? `Promemoria non disattivato: ${error.message}` : `Promemoria di ${reminder.name} disattivati.`, error ? 'error' : 'success');
+  };
+
   if (loading) {
     return <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="card animate-pulse h-20 bg-warm-gray-100" />)}</div>;
   }
@@ -210,6 +231,13 @@ export function MedicationsPage({ onBack }: Props) {
                       title="Non assunto"
                     >
                       <X size={16} />
+                    </button>
+                    <button
+                      onClick={() => deactivateReminder(rem)}
+                      className="p-2 rounded-xl bg-warm-gray-100 text-warm-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-all"
+                      title="Disattiva promemoria"
+                    >
+                      <Power size={16} />
                     </button>
                   </div>
                 </div>

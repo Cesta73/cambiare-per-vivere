@@ -35,6 +35,9 @@ export type Database = {
       hunger_satiety_entries: { Row: HungerSatietyEntry; Insert: Partial<HungerSatietyEntry>; Update: Partial<HungerSatietyEntry> };
       camino_settings: { Row: CaminoSettings; Insert: Partial<CaminoSettings>; Update: Partial<CaminoSettings> };
       camino_workouts: { Row: CaminoWorkout; Insert: Partial<CaminoWorkout>; Update: Partial<CaminoWorkout> };
+      reminders: { Row: Reminder; Insert: Partial<Reminder>; Update: Partial<Reminder> };
+      contemplative_sessions: { Row: ContemplativeSession; Insert: Partial<ContemplativeSession>; Update: Partial<ContemplativeSession> };
+      jarvis_events: { Row: JarvisEvent; Insert: Partial<JarvisEvent>; Update: Partial<JarvisEvent> };
     };
   };
 };
@@ -401,6 +404,59 @@ export interface CaminoWorkout {
   notes: string | null;
   completed: boolean;
   completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Reminder {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  remind_at: string;
+  repeat_rule: string | null;
+  is_enabled: boolean;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContemplativeSession {
+  id: string;
+  user_id: string;
+  practice_key: string;
+  practice_name: string;
+  mode: 'secular' | 'spiritual';
+  planned_duration_sec: number | null;
+  actual_duration_sec: number | null;
+  completed: boolean;
+  started_at: string;
+  ended_at: string | null;
+  linked_to: string | null;
+  linked_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JarvisEvent {
+  id: string;
+  user_id: string;
+  source: string;
+  chat_id: string | null;
+  message_id: string | null;
+  raw_text: string;
+  intent: string | null;
+  status: 'received' | 'pending' | 'saved' | 'chat' | 'error';
+  entity_type: string | null;
+  entity_id: string | null;
+  summary: string | null;
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+  received_at: string;
+  processed_at: string | null;
   created_at: string;
   updated_at: string;
 }

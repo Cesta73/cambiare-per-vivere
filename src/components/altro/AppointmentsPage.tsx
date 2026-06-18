@@ -17,7 +17,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function AppointmentsPage({ onBack }: Props) {
-  const { user, isDemo, demoData, showToast } = useApp();
+  const { user, isDemo, demoData, showToast, dataVersion } = useApp();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
@@ -38,7 +38,7 @@ export function AppointmentsPage({ onBack }: Props) {
 
   useEffect(() => {
     loadData();
-  }, [isDemo, user]);
+  }, [isDemo, user, dataVersion]);
 
   const loadData = async () => {
     setLoading(true);

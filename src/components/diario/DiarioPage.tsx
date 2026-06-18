@@ -22,14 +22,14 @@ const JOURNAL_QUESTIONS = [
 type JournalKey = typeof JOURNAL_QUESTIONS[number]['key'];
 
 const MORNING_QUESTIONS = JOURNAL_QUESTIONS.filter(q =>
-  ['feeling_today', 'current_need', 'tomorrow_intention'].includes(q.key)
+  ['feeling_today', 'current_need'].includes(q.key)
 );
 const EVENING_QUESTIONS = JOURNAL_QUESTIONS.filter(q =>
-  ['small_victory', 'main_difficulty', 'what_helped'].includes(q.key)
+  ['small_victory', 'main_difficulty', 'what_helped', 'tomorrow_intention'].includes(q.key)
 );
 
 export function DiarioPage() {
-  const { user, isDemo, demoData, showToast } = useApp();
+  const { user, isDemo, demoData, showToast, dataVersion } = useApp();
   const [tab, setTab] = useState<DiaryTab>('oggi');
   const [phase, setPhase] = useState<DayPhase>(() => new Date().getHours() < 15 ? 'mattino' : 'sera');
   const [entry, setEntry] = useState<Partial<JournalEntry>>({});
@@ -48,7 +48,7 @@ export function DiarioPage() {
 
   useEffect(() => {
     loadData();
-  }, [isDemo, user, tab]);
+  }, [isDemo, user, tab, dataVersion]);
 
   const loadData = async () => {
     setLoading(true);
@@ -199,7 +199,29 @@ export function DiarioPage() {
           {/* Journal questions */}
           <div className="card space-y-4">
             <h2 className="font-semibold text-warm-gray-800">{phase === 'mattino' ? 'Intenzioni del mattino' : 'Riflessione della sera'}</h2>
-            {(phase === 'mattino' ? MORNING_QUESTIONS : EVENING_QUESTIONS).map(q => (
+            {(phase === 'mattino' ? MORNING_QUESTIONS.slice(0, 1) : EVENING_QUESTIONS).map(q => (
+              <div key={q.key}>
+                <label className="label">{q.label}</label>
+                <textarea
+                  className="input-field h-20 resize-none text-sm"
+                  placeholder={q.placeholder}
+                  value={(entry as Record<string, string>)[q.key] ?? ''}
+                  onChange={e => setEntry(prev => ({ ...prev, [q.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+            {phase === 'mattino' && (
+              <div>
+                <label className="label">Cosa desidero fare diversamente oggi?</label>
+                <textarea
+                  className="input-field h-20 resize-none text-sm"
+                  placeholder="Una scelta concreta per oggi..."
+                  value={entry.important_event ?? ''}
+                  onChange={e => setEntry(prev => ({ ...prev, important_event: e.target.value }))}
+                />
+              </div>
+            )}
+            {phase === 'mattino' && MORNING_QUESTIONS.slice(1).map(q => (
               <div key={q.key}>
                 <label className="label">{q.label}</label>
                 <textarea
@@ -258,6 +280,12 @@ export function DiarioPage() {
                   <h3 className="font-semibold text-warm-gray-800 capitalize">{formatDateLong(e.entry_date)}</h3>
                 </div>
                 <div className="space-y-2">
+                  {e.important_event && (
+                    <div>
+                      <p className="text-xs font-medium text-warm-gray-500">Cosa desideravo fare diversamente oggi?</p>
+                      <p className="text-sm text-warm-gray-700 mt-0.5">{e.important_event}</p>
+                    </div>
+                  )}
                   {JOURNAL_QUESTIONS.map(q => {
                     const val = e[q.key];
                     if (!val) return null;
@@ -268,7 +296,7 @@ export function DiarioPage() {
                       </div>
                     );
                   })}
-                  {e.free_notes && (
+                  {e.free_notes && !looksLikeLegacyStructuredDump(e.free_notes) && (
                     <div>
                       <p className="text-xs font-medium text-warm-gray-500">Note libere</p>
                       <p className="text-sm text-warm-gray-700 mt-0.5">{e.free_notes}</p>
@@ -328,4 +356,8 @@ export function DiarioPage() {
       )}
     </div>
   );
+}
+
+function looksLikeLegacyStructuredDump(notes: string) {
+  return /\[(mattina|sera|\d{1,2}:\d{2})\]|spuntino:|mangiato con fame|test tecnico jarvis/i.test(notes);
 }

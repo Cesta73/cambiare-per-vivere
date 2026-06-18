@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Star, Check, ClipboardCheck, ShoppingCart, CalendarDays } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
-import type { PlannedMeal, WorkShift, FavoriteMeal } from '../../lib/supabase';
+import type { PlannedMeal, WorkShift, FavoriteMeal, HungerSatietyEntry } from '../../lib/supabase';
 import { getWeekStart, getWeekDays, dateToISO, formatDateShort, getDayNameShort, SHIFT_LABELS, SHIFT_COLORS, MEAL_TYPE_LABELS, todayISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { QuickMealModal } from '../oggi/QuickMealModal';
@@ -42,11 +42,12 @@ interface MealFormData {
 }
 
 export function SettimanaPage() {
-  const { user, isDemo, demoData, showToast } = useApp();
+  const { user, isDemo, demoData, showToast, dataVersion } = useApp();
   const [weekStart, setWeekStart] = useState(() => getWeekStart());
   const [meals, setMeals] = useState<PlannedMeal[]>([]);
   const [shifts, setShifts] = useState<WorkShift[]>([]);
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
+  const [consumedMeals, setConsumedMeals] = useState<HungerSatietyEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string>(todayISO());
   const [modal, setModal] = useState<'add_meal' | 'add_shift' | 'favorites' | 'recipe' | null>(null);
@@ -64,7 +65,7 @@ export function SettimanaPage() {
 
   useEffect(() => {
     loadData();
-  }, [weekStart, isDemo, user]);
+  }, [weekStart, isDemo, user, dataVersion]);
 
   useEffect(() => {
     if (kcalPer100g === null) return;
@@ -101,17 +102,25 @@ export function SettimanaPage() {
 
     if (isDemo) {
       setMeals([]);
+      setConsumedMeals([]);
       setShifts(demoData.workShifts.filter(s => s.date >= startISO && s.date <= endISO));
       setFavorites(demoData.favoriteMeals);
     } else if (user) {
-      const [mealsRes, shiftsRes, favsRes] = await Promise.all([
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const [mealsRes, shiftsRes, favsRes, consumedRes] = await Promise.all([
         supabase.from('planned_meals').select('*').eq('user_id', user.id).gte('plan_date', startISO).lte('plan_date', endISO),
         supabase.from('work_shifts').select('*').eq('user_id', user.id).gte('date', startISO).lte('date', endISO),
         supabase.from('favorite_meals').select('*').eq('user_id', user.id).order('use_count', { ascending: false }),
+        supabase.from('hunger_satiety_entries').select('*').eq('user_id', user.id)
+          .gte('entry_datetime', new Date(`${startISO}T00:00:00`).toISOString())
+          .lt('entry_datetime', new Date(`${dateToISO(nextDay)}T00:00:00`).toISOString())
+          .order('entry_datetime', { ascending: false }),
       ]);
       setMeals(mealsRes.data ?? []);
       setShifts(shiftsRes.data ?? []);
       setFavorites(favsRes.data ?? []);
+      setConsumedMeals(consumedRes.data ?? []);
     }
     setLoading(false);
   };
@@ -502,6 +511,9 @@ export function SettimanaPage() {
   const goToNextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
 
   const getMealsForDay = (date: string) => meals.filter(m => m.plan_date === date);
+  const getConsumedMealsForDay = (date: string) => consumedMeals.filter(
+    meal => dateToISO(new Date(meal.entry_datetime)) === date,
+  );
   const getShiftForDay = (date: string) => shifts.find(s => s.date === date);
 
   const weekLabel = `${formatDateShort(dateToISO(weekStart))} – ${formatDateShort(dateToISO(weekDays[6]))}`;
@@ -534,7 +546,29 @@ export function SettimanaPage() {
             <button onClick={() => setRegisterMeal(true)} className="btn-primary w-full mt-4">Registra una variazione</button>
           </div>
           <div className="card">
-            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti di oggi</h2>
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti consumati oggi</h2>
+            {getConsumedMealsForDay(todayISO()).length === 0 ? (
+              <p className="text-sm text-warm-gray-400">Nessun pasto consumato registrato oggi.</p>
+            ) : getConsumedMealsForDay(todayISO()).map(meal => (
+              <div key={meal.id} className="p-3 rounded-xl mb-2 bg-sage-50 border border-sage-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-warm-gray-800">{meal.meal_name || MEAL_TYPE_LABELS[meal.meal_type ?? ''] || 'Pasto'}</p>
+                    <p className="text-xs text-warm-gray-500 mt-1">
+                      {[
+                        meal.pre_hunger !== null && `Fame ${meal.pre_hunger}/10`,
+                        meal.post_satiety !== null && `Sazietà ${meal.post_satiety}/10`,
+                        meal.post_satisfaction !== null && `Soddisfazione ${meal.post_satisfaction}/10`,
+                      ].filter(Boolean).join(' · ') || 'Registrazione parziale'}
+                    </p>
+                  </div>
+                  <span className="text-xs text-sage-700">{MEAL_TYPE_LABELS[meal.meal_type ?? '']}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti pianificati oggi</h2>
             {getMealsForDay(todayISO()).length === 0 ? <p className="text-sm text-warm-gray-400">Nessun pasto pianificato oggi.</p> :
               getMealsForDay(todayISO()).map(meal => (
                 <button key={meal.id} onClick={() => toggleMealComplete(meal)} className={`w-full flex items-center gap-3 p-3 rounded-xl mb-2 text-left ${meal.is_completed ? 'bg-sage-50' : 'bg-warm-gray-50'}`}>

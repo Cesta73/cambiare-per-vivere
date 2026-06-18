@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Droplets, Activity, Moon, Bell, Flame } from 'lucide-react';
+import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend
@@ -14,7 +14,7 @@ import { QuickWeightModal } from '../oggi/QuickWeightModal';
 type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
 
 export function ProgressiPage() {
-  const { user, isDemo, profile, demoData, showToast } = useApp();
+  const { user, isDemo, profile, demoData, showToast, dataVersion } = useApp();
   const [tab, setTab] = useState<ProgressTab>('misure');
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
@@ -41,7 +41,7 @@ export function ProgressiPage() {
 
   useEffect(() => {
     loadData();
-  }, [isDemo, user]);
+  }, [isDemo, user, dataVersion]);
 
   const loadData = async () => {
     setLoading(true);
@@ -64,15 +64,17 @@ export function ProgressiPage() {
     setLoading(false);
   };
 
-  const latestMeas = measurements.length > 0 ? measurements[measurements.length - 1] : null;
+  const latestWeightMeas = [...measurements].reverse().find(m => m.weight_kg !== null) ?? null;
+  const latestWaistMeas = [...measurements].reverse().find(m => m.waist_cm !== null) ?? null;
+  const latestBloodPressure = [...measurements].reverse().find(m => m.systolic_bp !== null && m.diastolic_bp !== null) ?? null;
   const firstMeas = measurements[0] ?? { weight_kg: profile?.start_weight, waist_cm: profile?.start_waist, neck_cm: profile?.start_neck, measured_at: profile?.start_date };
 
-  const weightChange = latestMeas?.weight_kg && firstMeas?.weight_kg
-    ? +(latestMeas.weight_kg - firstMeas.weight_kg).toFixed(1)
+  const weightChange = latestWeightMeas?.weight_kg && firstMeas?.weight_kg
+    ? +(latestWeightMeas.weight_kg - firstMeas.weight_kg).toFixed(1)
     : null;
 
-  const bmi = latestMeas?.weight_kg && profile?.height_cm
-    ? calculateBMI(latestMeas.weight_kg, profile.height_cm)
+  const bmi = latestWeightMeas?.weight_kg && profile?.height_cm
+    ? calculateBMI(latestWeightMeas.weight_kg, profile.height_cm)
     : null;
 
   const weightData = measurements
@@ -82,6 +84,15 @@ export function ProgressiPage() {
   const circumferenceData = measurements
     .filter(m => m.waist_cm || m.neck_cm)
     .map(m => ({ date: formatDateShort(m.measured_at), addome: m.waist_cm, collo: m.neck_cm }));
+
+  const bloodPressureData = measurements
+    .filter(m => m.systolic_bp !== null && m.diastolic_bp !== null)
+    .map(m => ({
+      date: formatDateShort(m.measured_at),
+      label: formatDate(m.measured_at),
+      massima: m.systolic_bp,
+      minima: m.diastolic_bp,
+    }));
 
   const activityByWeek = activities.reduce<Record<string, number>>((acc, a) => {
     const d = new Date(a.activity_date + 'T12:00:00');
@@ -192,7 +203,7 @@ export function ProgressiPage() {
                   <Scale size={16} className="text-petrol-500" />
                   <span className="text-xs text-warm-gray-500 font-medium">Peso attuale</span>
                 </div>
-                <p className="text-2xl font-bold text-warm-gray-900">{latestMeas?.weight_kg ?? '—'} <span className="text-sm font-normal text-warm-gray-500">kg</span></p>
+                <p className="text-2xl font-bold text-warm-gray-900">{latestWeightMeas?.weight_kg ?? '—'} <span className="text-sm font-normal text-warm-gray-500">kg</span></p>
                 {weightChange !== null && (
                   <div className={`flex items-center gap-1 mt-1 text-sm font-medium ${weightChange < 0 ? 'text-sage-600' : weightChange > 0 ? 'text-amber-600' : 'text-warm-gray-500'}`}>
                     {weightChange < 0 ? <TrendingDown size={14} /> : weightChange > 0 ? <TrendingUp size={14} /> : <Minus size={14} />}
@@ -206,13 +217,25 @@ export function ProgressiPage() {
                 <Ruler size={16} className="text-sage-500" />
                 <span className="text-xs text-warm-gray-500 font-medium">Addome</span>
               </div>
-              <p className="text-2xl font-bold text-warm-gray-900">{latestMeas?.waist_cm ?? '—'} <span className="text-sm font-normal text-warm-gray-500">cm</span></p>
-              {latestMeas?.waist_cm && firstMeas?.waist_cm && (
-                <p className={`text-sm font-medium mt-1 ${latestMeas.waist_cm < firstMeas.waist_cm ? 'text-sage-600' : 'text-warm-gray-500'}`}>
-                  {(latestMeas.waist_cm - firstMeas.waist_cm).toFixed(1)} cm totali
+              <p className="text-2xl font-bold text-warm-gray-900">{latestWaistMeas?.waist_cm ?? '—'} <span className="text-sm font-normal text-warm-gray-500">cm</span></p>
+              {latestWaistMeas?.waist_cm && firstMeas?.waist_cm && (
+                <p className={`text-sm font-medium mt-1 ${latestWaistMeas.waist_cm < firstMeas.waist_cm ? 'text-sage-600' : 'text-warm-gray-500'}`}>
+                  {(latestWaistMeas.waist_cm - firstMeas.waist_cm).toFixed(1)} cm totali
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center gap-2 mb-1">
+              <HeartPulse size={17} className="text-rose-500" />
+              <span className="text-xs text-warm-gray-500 font-medium">Ultima pressione</span>
+            </div>
+            <p className="text-2xl font-bold text-warm-gray-900">
+              {latestBloodPressure ? `${latestBloodPressure.systolic_bp}/${latestBloodPressure.diastolic_bp}` : '—'}
+              <span className="text-sm font-normal text-warm-gray-500"> mmHg</span>
+            </p>
+            {latestBloodPressure && <p className="text-xs text-warm-gray-500 mt-1">{formatDate(latestBloodPressure.measured_at)}</p>}
           </div>
 
           {/* BMI info (informativo) */}
@@ -240,10 +263,10 @@ export function ProgressiPage() {
                     <span className="font-semibold text-sage-700">{profile.discharge_weight} kg (−{(profile.start_weight - profile.discharge_weight).toFixed(1)} kg)</span>
                   </div>
                 )}
-                {latestMeas?.weight_kg && (
+                {latestWeightMeas?.weight_kg && (
                   <div className="flex justify-between border-t border-warm-gray-100 pt-2 mt-2">
                     <span className="text-warm-gray-500">Oggi</span>
-                    <span className="font-bold text-petrol-700">{latestMeas.weight_kg} kg (−{(profile.start_weight - latestMeas.weight_kg).toFixed(1)} kg)</span>
+                    <span className="font-bold text-petrol-700">{latestWeightMeas.weight_kg} kg (−{(profile.start_weight - latestWeightMeas.weight_kg).toFixed(1)} kg)</span>
                   </div>
                 )}
               </div>
@@ -281,6 +304,28 @@ export function ProgressiPage() {
                   <Legend />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          )}
+
+          {bloodPressureData.length > 0 && (
+            <div className="card">
+              <h2 className="font-semibold text-warm-gray-800 mb-4">Andamento pressione</h2>
+              {bloodPressureData.length >= 2 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={bloodPressureData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#8d877a' }} />
+                    <YAxis domain={['dataMin - 10', 'dataMax + 10']} tick={{ fontSize: 11, fill: '#8d877a' }} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line type="monotone" dataKey="massima" name="Massima" stroke="#d95f76" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="minima" name="Minima" stroke="#236874" strokeWidth={2} dot={{ r: 3 }} />
+                    <Legend />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-sm text-warm-gray-600">Prima misurazione: {bloodPressureData[0].massima}/{bloodPressureData[0].minima} mmHg.</p>
+              )}
+              <p className="text-xs text-warm-gray-500 mt-3">Lo storico serve a osservare l'andamento; l'interpretazione clinica spetta al medico.</p>
             </div>
           )}
 

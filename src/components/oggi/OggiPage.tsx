@@ -27,7 +27,7 @@ const HABIT_ICONS: Record<string, LucideIcon> = {
 };
 
 export function OggiPage() {
-  const { profile, isDemo, user, demoData, showToast, setActiveTab } = useApp();
+  const { profile, isDemo, user, demoData, showToast, setActiveTab, dataVersion } = useApp();
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [habits, setHabits] = useState<HabitDefinition[]>([]);
   const [habitLogs, setHabitLogs] = useState<HabitLog[]>([]);
@@ -38,7 +38,7 @@ export function OggiPage() {
 
   useEffect(() => {
     loadData();
-  }, [isDemo, user]);
+  }, [isDemo, user, dataVersion]);
 
   const loadData = async () => {
     setLoading(true);
@@ -168,6 +168,27 @@ export function OggiPage() {
         </div>
       )}
 
+      {/* Daily state, immediately after the greeting */}
+      <button onClick={() => setModal('mood')} className="card w-full text-left">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-warm-gray-800">Come mi sento oggi</h2>
+          <span className="text-xs font-medium text-sage-600">{checkin?.mood_score ? 'Modifica' : 'Compila'}</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: 'Umore', value: checkin?.mood_score, color: 'text-rose-500' },
+            { label: 'Energia', value: checkin?.energy_score, color: 'text-amber-500' },
+            { label: 'Motivazione', value: checkin?.motivation_score, color: 'text-sage-500' },
+            { label: 'Stress', value: checkin?.stress_score ? 6 - checkin.stress_score : null, color: 'text-petrol-500' },
+          ].map(item => (
+            <div key={item.label} className="bg-warm-gray-50 rounded-xl p-3 text-center">
+              <div className={`text-2xl font-bold ${item.color}`}>{item.value ?? '—'}</div>
+              <div className="text-xs text-warm-gray-500 mt-1">{item.label}</div>
+            </div>
+          ))}
+        </div>
+      </button>
+
       {/* Priority Card */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
@@ -247,6 +268,19 @@ export function OggiPage() {
         </div>
       </div>
 
+      <button
+        onClick={() => setActiveTab('registro')}
+        className="card w-full text-left bg-gradient-to-br from-white to-sage-50 border-sage-200"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-warm-gray-800">Tutte le registrazioni</p>
+            <p className="text-sm text-warm-gray-500 mt-1">Controlla subito cosa Jarvis ha salvato e cosa manca.</p>
+          </div>
+          <span className="text-sage-700 text-xl">→</span>
+        </div>
+      </button>
+
       {/* Water Tracker */}
       <div className="card">
         <div className="flex items-center justify-between mb-3">
@@ -308,26 +342,6 @@ export function OggiPage() {
               Tutte le abitudini completate! Ottimo lavoro
             </div>
           )}
-        </div>
-      )}
-
-      {/* Mood summary */}
-      {checkin?.mood_score && (
-        <div className="card">
-          <h2 className="font-semibold text-warm-gray-800 mb-3">Come mi sento oggi</h2>
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Umore', value: checkin.mood_score, color: 'text-rose-500' },
-              { label: 'Energia', value: checkin.energy_score, color: 'text-amber-500' },
-              { label: 'Motivazione', value: checkin.motivation_score, color: 'text-sage-500' },
-              { label: 'Stress', value: checkin.stress_score ? 6 - checkin.stress_score : null, color: 'text-petrol-500' },
-            ].map(item => (
-              <div key={item.label} className="bg-warm-gray-50 rounded-xl p-3 text-center">
-                <div className={`text-2xl font-bold ${item.color}`}>{item.value ?? '—'}</div>
-                <div className="text-xs text-warm-gray-500 mt-1">{item.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
