@@ -18,7 +18,6 @@ export function ProfilePage({ onBack }: Props) {
   const [goalDesc, setGoalDesc] = useState(profile?.goal_description ?? '');
   const [hideWeight, setHideWeight] = useState(profile?.hide_weight_dashboard ?? false);
   const [hideBmi, setHideBmi] = useState(profile?.hide_bmi ?? false);
-  const [usesCpap, setUsesCpap] = useState(profile?.uses_cpap ?? false);
   const [calorieTarget, setCalorieTarget] = useState(profile?.daily_calorie_target?.toString() ?? '2200');
 
   const bmi = profile?.height_cm && profile?.discharge_weight
@@ -33,7 +32,6 @@ export function ProfilePage({ onBack }: Props) {
       goal_description: goalDesc || null,
       hide_weight_dashboard: hideWeight,
       hide_bmi: hideBmi,
-      uses_cpap: usesCpap,
       daily_calorie_target: calorieTarget ? parseInt(calorieTarget) : 2200,
     });
     showToast(error ? `Profilo non aggiornato: ${error}` : 'Profilo aggiornato!', error ? 'error' : 'success');
@@ -128,7 +126,6 @@ export function ProfilePage({ onBack }: Props) {
         {[
           { label: 'Nascondi peso dalla dashboard', value: hideWeight, set: setHideWeight },
           { label: 'Nascondi BMI', value: hideBmi, set: setHideBmi },
-          { label: 'Uso CPAP durante il sonno', value: usesCpap, set: setUsesCpap },
         ].map(({ label, value, set }) => (
           <div key={label} className="flex items-center justify-between py-1">
             <span className="text-sm text-warm-gray-700">{label}</span>

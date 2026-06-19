@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, FileText, Download, Printer, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Download, Printer, CheckSquare, Square } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
-import { formatDate, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
+import { formatDate, ACTIVITY_TYPE_LABELS, MEAL_TYPE_LABELS } from '../../lib/utils';
 
 interface Props { onBack: () => void; }
 
-type ReportSection = 'measurements' | 'activity' | 'sleep' | 'medications' | 'mood' | 'notes';
+type ReportSection = 'measurements' | 'pressure' | 'activity' | 'sleep' | 'medications' | 'mood' | 'meals';
 
 const escapeHtml = (value: string) => value
   .replace(/&/g, '&amp;')
@@ -28,7 +28,7 @@ export function ReportPage({ onBack }: Props) {
     return d.toISOString().split('T')[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
-  const [sections, setSections] = useState<Set<ReportSection>>(new Set(['measurements', 'activity', 'sleep', 'medications', 'mood']));
+  const [sections, setSections] = useState<Set<ReportSection>>(new Set(['measurements', 'pressure', 'activity', 'sleep', 'medications', 'mood', 'meals']));
   const [questions, setQuestions] = useState('');
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
@@ -52,14 +52,14 @@ export function ReportPage({ onBack }: Props) {
     };
 
     if (isDemo) {
-      if (sections.has('measurements')) {
+      if (sections.has('measurements') || sections.has('pressure')) {
         data.measurements = demoData.measurements.filter(m => m.measured_at >= dateFrom && m.measured_at <= dateTo);
       }
       if (sections.has('activity')) {
         data.activities = demoData.activities.filter(a => a.activity_date >= dateFrom && a.activity_date <= dateTo);
       }
     } else if (user) {
-      if (sections.has('measurements')) {
+      if (sections.has('measurements') || sections.has('pressure')) {
         const { data: measData } = await supabase.from('body_measurements').select('*').eq('user_id', user.id).gte('measured_at', dateFrom).lte('measured_at', dateTo).order('measured_at');
         data.measurements = measData ?? [];
       }
@@ -72,12 +72,22 @@ export function ReportPage({ onBack }: Props) {
         data.sleep = sleepData ?? [];
       }
       if (sections.has('medications')) {
-        const { data: medData } = await supabase.from('medication_logs').select('*').eq('user_id', user.id).gte('log_date', dateFrom).lte('log_date', dateTo).order('log_date');
+        const [{ data: medData }, { data: remindersData }] = await Promise.all([
+          supabase.from('medication_logs').select('*').eq('user_id', user.id).gte('log_date', dateFrom).lte('log_date', dateTo).order('log_date'),
+          supabase.from('medication_reminders').select('*').eq('user_id', user.id),
+        ]);
         data.medications = medData ?? [];
+        data.medicationReminders = remindersData ?? [];
       }
       if (sections.has('mood')) {
         const { data: moodData } = await supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('checkin_date', dateFrom).lte('checkin_date', dateTo).order('checkin_date');
         data.mood = moodData ?? [];
+      }
+      if (sections.has('meals')) {
+        const fromTimestamp = `${dateFrom}T00:00:00`;
+        const toTimestamp = `${dateTo}T23:59:59`;
+        const { data: mealData } = await supabase.from('hunger_satiety_entries').select('*').eq('user_id', user.id).gte('entry_datetime', fromTimestamp).lte('entry_datetime', toTimestamp).order('entry_datetime');
+        data.meals = mealData ?? [];
       }
     }
 
@@ -100,10 +110,18 @@ export function ReportPage({ onBack }: Props) {
       ``,
     ];
 
-    if (reportData.measurements?.length) {
+    if (sections.has('measurements') && reportData.measurements?.some((m: any) => m.weight_kg !== null || m.waist_cm !== null || m.neck_cm !== null)) {
       lines.push('MISURAZIONI CORPOREE');
-      reportData.measurements.forEach((m: any) => {
+      reportData.measurements.filter((m: any) => m.weight_kg !== null || m.waist_cm !== null || m.neck_cm !== null).forEach((m: any) => {
         lines.push(`${formatDate(m.measured_at)}: Peso ${m.weight_kg ?? '—'} kg, Addome ${m.waist_cm ?? '—'} cm, Collo ${m.neck_cm ?? '—'} cm${m.notes ? ` — ${m.notes}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (sections.has('pressure') && reportData.measurements?.some((m: any) => m.systolic_bp !== null && m.diastolic_bp !== null)) {
+      lines.push('PRESSIONE ARTERIOSA');
+      reportData.measurements.filter((m: any) => m.systolic_bp !== null && m.diastolic_bp !== null).forEach((m: any) => {
+        lines.push(`${formatDate(m.measured_at)}: ${m.systolic_bp}/${m.diastolic_bp} mmHg${m.notes ? ` — ${m.notes}` : ''}`);
       });
       lines.push('');
     }
@@ -117,9 +135,39 @@ export function ReportPage({ onBack }: Props) {
     }
 
     if (reportData.mood?.length) {
-      lines.push('UMORE ED ENERGIA');
+      lines.push('UMORE, ENERGIA, MOTIVAZIONE E STRESS');
       reportData.mood.forEach((c: any) => {
-        lines.push(`${formatDate(c.checkin_date)}: Umore ${c.mood_score ?? '—'}/5, Energia ${c.energy_score ?? '—'}/5, Motivazione ${c.motivation_score ?? '—'}/5, Stress ${c.stress_score ?? '—'}/5`);
+        const stress = c.stress_score !== null ? 6 - c.stress_score : '—';
+        lines.push(`${formatDate(c.checkin_date)}: Umore ${c.mood_score ?? '—'}/5, Energia ${c.energy_score ?? '—'}/5, Motivazione ${c.motivation_score ?? '—'}/5, Stress ${stress}/5`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.sleep?.length) {
+      lines.push('SONNO');
+      reportData.sleep.forEach((s: any) => {
+        lines.push(`${formatDate(s.sleep_date)}: ${s.duration_hours ?? '—'} ore, qualità ${s.quality ?? '—'}/5${s.notes ? ` — ${s.notes}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.medications?.length) {
+      lines.push('TERAPIA, INTEGRATORI E ALTRE ASSUNZIONI');
+      reportData.medications.forEach((m: any) => {
+        const reminder = reportData.medicationReminders?.find((r: any) => r.id === m.reminder_id);
+        const category = reminder?.category === 'supplement' ? 'Integratore' : reminder?.category === 'medication' ? 'Farmaco' : 'Altro';
+        lines.push(`${formatDate(m.log_date)}${m.log_time ? ` ore ${m.log_time.slice(0, 5)}` : ''}: ${m.reminder_name} (${category}) — ${m.taken ? 'PRESO' : 'NON PRESO'}${m.notes ? ` — ${m.notes}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (reportData.meals?.length) {
+      lines.push('PASTI, FAME, SAZIETÀ E SODDISFAZIONE');
+      reportData.meals.forEach((m: any) => {
+        const mealDate = new Date(m.entry_datetime);
+        const date = mealDate.toLocaleDateString('it-IT');
+        const time = mealDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        lines.push(`${date} ore ${time}: ${MEAL_TYPE_LABELS[m.meal_type] ?? m.meal_type ?? 'Pasto'}${m.meal_name ? ` — ${m.meal_name}` : ''}; fame prima ${m.pre_hunger ?? '—'}/10, sazietà ${m.post_satiety ?? '—'}/10, soddisfazione ${m.post_satisfaction ?? '—'}/10`);
       });
       lines.push('');
     }
@@ -140,12 +188,20 @@ export function ReportPage({ onBack }: Props) {
 
   const exportCSV = () => {
     if (!reportData) return;
-    const rows: string[][] = [['Data', 'Tipo', 'Peso (kg)', 'Addome (cm)', 'Collo (cm)', 'Durata attività (min)', 'Umore', 'Energia']];
+    const rows: string[][] = [[
+      'Data', 'Tipo', 'Dettaglio', 'Peso (kg)', 'Addome (cm)', 'Collo (cm)',
+      'Pressione massima', 'Pressione minima', 'Durata attività (min)',
+      'Umore', 'Energia', 'Motivazione', 'Stress', 'Preso', 'Fame prima',
+      'Sazietà dopo', 'Soddisfazione',
+    ]];
 
     const allDates = new Set([
       ...(reportData.measurements?.map((m: any) => m.measured_at) ?? []),
       ...(reportData.activities?.map((a: any) => a.activity_date) ?? []),
       ...(reportData.mood?.map((c: any) => c.checkin_date) ?? []),
+      ...(reportData.sleep?.map((s: any) => s.sleep_date) ?? []),
+      ...(reportData.medications?.map((m: any) => m.log_date) ?? []),
+      ...(reportData.meals?.map((m: any) => new Date(m.entry_datetime).toISOString().split('T')[0]) ?? []),
     ]);
 
     Array.from(allDates).sort().forEach(date => {
@@ -153,16 +209,35 @@ export function ReportPage({ onBack }: Props) {
       const act = reportData.activities?.filter((a: any) => a.activity_date === date);
       const mood = reportData.mood?.find((c: any) => c.checkin_date === date);
       const totalActMin = act?.reduce((s: number, a: any) => s + a.duration_minutes, 0) ?? '';
+      const meds = reportData.medications?.filter((m: any) => m.log_date === date) ?? [];
+      const dayMeals = reportData.meals?.filter((m: any) => new Date(m.entry_datetime).toISOString().split('T')[0] === date) ?? [];
+      const stress = mood?.stress_score !== null && mood?.stress_score !== undefined ? 6 - mood.stress_score : '';
       rows.push([
         formatDate(date),
         'giornata',
+        '',
         meas?.weight_kg ?? '',
         meas?.waist_cm ?? '',
         meas?.neck_cm ?? '',
+        meas?.systolic_bp ?? '',
+        meas?.diastolic_bp ?? '',
         totalActMin,
         mood?.mood_score ?? '',
         mood?.energy_score ?? '',
+        mood?.motivation_score ?? '',
+        stress,
+        '',
+        '',
+        '',
+        '',
       ]);
+      meds.forEach((med: any) => rows.push([
+        formatDate(date), 'terapia/integratore', med.reminder_name, '', '', '', '', '', '', '', '', '', '', med.taken ? 'Sì' : 'No', '', '', '',
+      ]));
+      dayMeals.forEach((meal: any) => rows.push([
+        formatDate(date), MEAL_TYPE_LABELS[meal.meal_type] ?? meal.meal_type ?? 'pasto', meal.meal_name ?? '', '', '', '', '', '', '', '', '', '', '', '',
+        meal.pre_hunger ?? '', meal.post_satiety ?? '', meal.post_satisfaction ?? '',
+      ]));
     });
 
     const csv = rows.map(r => r.map(escapeCsvCell).join(',')).join('\n');
@@ -178,10 +253,12 @@ export function ReportPage({ onBack }: Props) {
 
   const SECTION_OPTIONS: { id: ReportSection; label: string }[] = [
     { id: 'measurements', label: 'Peso e circonferenze' },
+    { id: 'pressure', label: 'Pressione arteriosa' },
     { id: 'activity', label: 'Attività fisica' },
-    { id: 'sleep', label: 'Sonno e CPAP' },
-    { id: 'medications', label: 'Aderenza ai promemoria' },
-    { id: 'mood', label: 'Umore ed energia' },
+    { id: 'sleep', label: 'Sonno' },
+    { id: 'medications', label: 'Terapia, integratori e altre assunzioni' },
+    { id: 'mood', label: 'Umore, energia, motivazione e stress' },
+    { id: 'meals', label: 'Pasti, fame, sazietà e soddisfazione' },
   ];
 
   return (
@@ -256,6 +333,12 @@ export function ReportPage({ onBack }: Props) {
             )}
             {reportData.mood?.length > 0 && (
               <p><strong>Check-in:</strong> {reportData.mood.length} giornate tracciate</p>
+            )}
+            {reportData.medications?.length > 0 && (
+              <p><strong>Terapia e integratori:</strong> {reportData.medications.filter((m: any) => m.taken).length} presi, {reportData.medications.filter((m: any) => !m.taken).length} non presi</p>
+            )}
+            {reportData.meals?.length > 0 && (
+              <p><strong>Pasti:</strong> {reportData.meals.length} registrazioni con fame, sazietà e soddisfazione</p>
             )}
             {reportData.questions && (
               <div>

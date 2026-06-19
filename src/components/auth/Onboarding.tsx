@@ -29,7 +29,6 @@ export function Onboarding() {
   const [heightCm, setHeightCm] = useState('');
   const [goalDescription, setGoalDescription] = useState('');
   const [preferredWeighDays, setPreferredWeighDays] = useState<string[]>(['monday']);
-  const [usesCpap, setUsesCpap] = useState(false);
   const [usedShifts, setUsedShifts] = useState<string[]>([]);
   const [startDate, setStartDate] = useState('');
   const [startWeight, setStartWeight] = useState('');
@@ -64,7 +63,6 @@ export function Onboarding() {
         height_cm: heightCm ? parseFloat(heightCm) : null,
         goal_description: goalDescription || null,
         preferred_weigh_days: preferredWeighDays,
-        uses_cpap: usesCpap,
         start_date: startDate || undefined,
         start_weight: startWeight ? parseFloat(startWeight) : undefined,
         start_waist: startWaist ? parseFloat(startWaist) : undefined,
@@ -210,18 +208,6 @@ export function Onboarding() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-warm-gray-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-warm-gray-800">Utilizzo CPAP</p>
-                  <p className="text-sm text-warm-gray-500">Ricevi promemoria per l'uso notturno</p>
-                </div>
-                <button
-                  onClick={() => setUsesCpap(!usesCpap)}
-                  className={`w-12 h-6 rounded-full transition-all relative ${usesCpap ? 'bg-sage-500' : 'bg-warm-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${usesCpap ? 'left-6' : 'left-0.5'}`} />
-                </button>
               </div>
             </>
           )}

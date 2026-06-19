@@ -22,7 +22,6 @@ const CAT_LABELS: Record<string, string> = {
   supplement: 'Supplemento',
   appointment: 'Visita',
   exam: 'Esame',
-  cpap: 'CPAP',
   other: 'Altro',
 };
 
@@ -50,7 +49,7 @@ export function MedicationsPage({ onBack }: Props) {
         supabase.from('medication_reminders').select('*').eq('user_id', user.id).eq('is_active', true).order('created_at'),
         supabase.from('medication_logs').select('*').eq('user_id', user.id).eq('log_date', today),
       ]);
-      setReminders(remRes.data ?? []);
+      setReminders((remRes.data ?? []).filter(reminder => reminder.category !== 'cpap'));
       setTodayLogs(logsRes.data ?? []);
     }
     setLoading(false);
@@ -204,7 +203,6 @@ export function MedicationsPage({ onBack }: Props) {
               const catColors: Record<string, string> = {
                 medication: 'bg-blue-100 text-blue-700',
                 supplement: 'bg-sage-100 text-sage-700',
-                cpap: 'bg-petrol-100 text-petrol-700',
                 other: 'bg-warm-gray-100 text-warm-gray-700',
               };
               return (

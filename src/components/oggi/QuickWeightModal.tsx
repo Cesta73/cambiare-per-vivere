@@ -11,11 +11,17 @@ export function QuickWeightModal({ onClose }: Props) {
   const [weight, setWeight] = useState('');
   const [waist, setWaist] = useState('');
   const [neck, setNeck] = useState('');
+  const [systolic, setSystolic] = useState('');
+  const [diastolic, setDiastolic] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
-    if (!weight && !waist && !neck) return;
+    if (!weight && !waist && !neck && !systolic && !diastolic) return;
+    if ((systolic && !diastolic) || (!systolic && diastolic)) {
+      showToast('Inserisci sia la pressione massima sia la minima.', 'error');
+      return;
+    }
     setLoading(true);
     if (!user) {
       showToast('Sessione non disponibile.', 'error');
@@ -28,6 +34,8 @@ export function QuickWeightModal({ onClose }: Props) {
         weight_kg: weight ? parseFloat(weight) : null,
         waist_cm: waist ? parseFloat(waist) : null,
         neck_cm: neck ? parseFloat(neck) : null,
+        systolic_bp: systolic ? parseInt(systolic) : null,
+        diastolic_bp: diastolic ? parseInt(diastolic) : null,
         notes: notes || null,
     });
     if (error) {
@@ -58,10 +66,17 @@ export function QuickWeightModal({ onClose }: Props) {
           </div>
         </div>
         <div>
+          <label className="label">Pressione arteriosa (mmHg)</label>
+          <div className="grid grid-cols-2 gap-3">
+            <input type="number" inputMode="numeric" className="input-field" placeholder="Massima" value={systolic} onChange={e => setSystolic(e.target.value)} />
+            <input type="number" inputMode="numeric" className="input-field" placeholder="Minima" value={diastolic} onChange={e => setDiastolic(e.target.value)} />
+          </div>
+        </div>
+        <div>
           <label className="label">Note</label>
           <input type="text" className="input-field" placeholder="Opzionale..." value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
-        <button onClick={handleSave} disabled={loading || (!weight && !waist && !neck)} className="btn-primary w-full">
+        <button onClick={handleSave} disabled={loading || (!weight && !waist && !neck && !systolic && !diastolic)} className="btn-primary w-full">
           {loading ? 'Salvataggio...' : 'Salva'}
         </button>
       </div>

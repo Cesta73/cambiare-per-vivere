@@ -108,11 +108,11 @@ export function RegistroPage() {
         row.mood_score && `umore ${row.mood_score}/5`,
         row.energy_score && `energia ${row.energy_score}/5`,
         row.motivation_score && `motivazione ${row.motivation_score}/5`,
-        row.stress_score && `stress ${row.stress_score}/5`,
+        row.stress_score && `stress ${6 - row.stress_score}/5`,
       ].filter(Boolean).join(' · ');
       if (values) timeline.push(item(row.id, row.updated_at, 'Come sto', values, HeartPulse, 'bg-rose-50 text-rose-700'));
     });
-    sleep.forEach(row => timeline.push(item(row.id, row.updated_at, 'Sonno', `${row.duration_hours ?? '—'} ore · qualità ${row.quality ?? '—'}/5 · CPAP ${row.cpap_used === null ? '—' : row.cpap_used ? 'sì' : 'no'}`, Moon, 'bg-indigo-50 text-indigo-700')));
+    sleep.forEach(row => timeline.push(item(row.id, row.updated_at, 'Sonno', `${row.duration_hours ?? '—'} ore · qualità ${row.quality ?? '—'}/5`, Moon, 'bg-indigo-50 text-indigo-700')));
     journals.forEach(row => timeline.push(item(row.id, row.updated_at, 'Diario', journalDetail(row), BookOpen, 'bg-warm-gray-100 text-warm-gray-700')));
     medicationLogs.forEach(row => timeline.push(item(row.id, row.created_at, row.reminder_name, row.taken ? 'Assunto' : 'Non assunto', Pill, 'bg-purple-50 text-purple-700')));
     contemplative.forEach(row => timeline.push(item(row.id, row.started_at, row.practice_name, `${Math.round((row.actual_duration_sec ?? row.planned_duration_sec ?? 0) / 60)} min`, Sparkles, 'bg-sage-50 text-sage-700')));

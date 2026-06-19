@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse } from 'lucide-react';
+import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse, Pill, Utensils } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend
 } from 'recharts';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
-import type { BodyMeasurement, ActivityEntry, HydrationEntry, SleepEntry, DailyCheckin, HungerSatietyEntry } from '../../lib/supabase';
-import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO } from '../../lib/utils';
-import { Modal } from '../ui/Modal';
+import type { BodyMeasurement, ActivityEntry, DailyCheckin, HungerSatietyEntry, MedicationLog } from '../../lib/supabase';
+import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS } from '../../lib/utils';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 
 type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
@@ -20,6 +19,7 @@ export function ProgressiPage() {
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [meals, setMeals] = useState<HungerSatietyEntry[]>([]);
+  const [medicationLogs, setMedicationLogs] = useState<MedicationLog[]>([]);
   const [caloriePeriod, setCaloriePeriod] = useState<'days' | 'weeks'>('days');
   const [loading, setLoading] = useState(true);
   const [addWeightModal, setAddWeightModal] = useState(false);
@@ -50,16 +50,18 @@ export function ProgressiPage() {
       setActivities(demoData.activities);
       setCheckins([]);
     } else if (user) {
-      const [measRes, actRes, checkinRes, mealRes] = await Promise.all([
+      const [measRes, actRes, checkinRes, mealRes, medicationRes] = await Promise.all([
         supabase.from('body_measurements').select('*').eq('user_id', user.id).order('measured_at'),
         supabase.from('activity_entries').select('*').eq('user_id', user.id).order('activity_date', { ascending: false }).limit(90),
         supabase.from('daily_checkins').select('*').eq('user_id', user.id).order('checkin_date').limit(30),
         supabase.from('hunger_satiety_entries').select('*').eq('user_id', user.id).order('entry_datetime', { ascending: false }).limit(300),
+        supabase.from('medication_logs').select('*').eq('user_id', user.id).order('log_date').limit(300),
       ]);
       setMeasurements(measRes.data ?? []);
       setActivities(actRes.data ?? []);
       setCheckins(checkinRes.data ?? []);
       setMeals(mealRes.data ?? []);
+      setMedicationLogs(medicationRes.data ?? []);
     }
     setLoading(false);
   };
@@ -148,6 +150,50 @@ export function ProgressiPage() {
       fiber: total.fiber + (meal.fiber_g ?? 0),
     }), { protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
+  const recentDates = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (13 - index));
+    return dateToISO(date);
+  });
+  const mealTypes = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
+  const mealTrackingData = recentDates.map(date => {
+    const dayMeals = meals.filter(meal => dateToISO(new Date(meal.entry_datetime)) === date);
+    return {
+      date: formatDateShort(date),
+      label: formatDate(date),
+      ...Object.fromEntries(mealTypes.map(type => [type, dayMeals.filter(meal => meal.meal_type === type).length])),
+    };
+  });
+  const mealSensationData = recentDates.flatMap(date => {
+    const dayMeals = meals.filter(meal => dateToISO(new Date(meal.entry_datetime)) === date);
+    if (!dayMeals.length) return [];
+    const average = (key: 'pre_hunger' | 'post_satiety' | 'post_satisfaction') => {
+      const values = dayMeals.map(meal => meal[key]).filter((value): value is number => value !== null);
+      return values.length ? +(values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1) : null;
+    };
+    return [{
+      date: formatDateShort(date),
+      label: formatDate(date),
+      fame: average('pre_hunger'),
+      sazieta: average('post_satiety'),
+      soddisfazione: average('post_satisfaction'),
+    }];
+  });
+  const medicationDailyData = recentDates.map(date => {
+    const logs = medicationLogs.filter(log => log.log_date === date);
+    return {
+      date: formatDateShort(date),
+      label: formatDate(date),
+      assunte: logs.filter(log => log.taken).length,
+      nonAssunte: logs.filter(log => !log.taken).length,
+    };
+  });
+  const medicationTaken = medicationLogs.filter(log => recentDates.includes(log.log_date) && log.taken).length;
+  const medicationTracked = medicationLogs.filter(log => recentDates.includes(log.log_date)).length;
+  const medicationAdherence = medicationTracked ? Math.round(medicationTaken / medicationTracked * 100) : null;
+  const trackedMeals = meals.filter(meal => recentDates.includes(dateToISO(new Date(meal.entry_datetime))));
+  const trackedMealDays = new Set(trackedMeals.map(meal => dateToISO(new Date(meal.entry_datetime)))).size;
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
       return (
@@ -184,7 +230,7 @@ export function ProgressiPage() {
           { id: 'misure', label: 'Misure' },
           { id: 'calorie', label: 'Calorie' },
           { id: 'attivita', label: 'Attività' },
-          { id: 'abitudini', label: 'Costanza' },
+          { id: 'abitudini', label: 'Benessere' },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
@@ -444,7 +490,7 @@ export function ProgressiPage() {
       {tab === 'abitudini' && (
         <div className="space-y-4">
           <div className="card">
-            <h2 className="font-semibold text-warm-gray-800 mb-3">Costanza delle abitudini</h2>
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Umore, energia, motivazione e stress</h2>
             {checkins.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={checkins.map(c => ({
@@ -452,6 +498,7 @@ export function ProgressiPage() {
                   umore: c.mood_score,
                   energia: c.energy_score,
                   motivazione: c.motivation_score,
+                  stress: c.stress_score !== null ? 6 - c.stress_score : null,
                 }))} margin={{ left: -10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
@@ -460,6 +507,7 @@ export function ProgressiPage() {
                   <Line type="monotone" dataKey="umore" name="Umore" stroke="#e07b7b" strokeWidth={2} dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="energia" name="Energia" stroke="#d4a853" strokeWidth={2} dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="motivazione" name="Motivazione" stroke="#5B8B76" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="stress" name="Stress" stroke="#236874" strokeWidth={2} dot={{ r: 2 }} />
                   <Legend />
                 </LineChart>
               </ResponsiveContainer>
@@ -467,6 +515,86 @@ export function ProgressiPage() {
               <p className="text-sm text-warm-gray-400 text-center py-6">Registra il tuo stato ogni giorno per vedere i grafici.</p>
             )}
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card">
+              <div className="flex items-center gap-2 mb-2">
+                <Utensils size={17} className="text-amber-600" />
+                <span className="text-xs text-warm-gray-500">Pasti tracciati</span>
+              </div>
+              <p className="text-2xl font-bold text-warm-gray-900">{trackedMeals.length}</p>
+              <p className="text-xs text-warm-gray-500">in {trackedMealDays} giorni su 14</p>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-2 mb-2">
+                <Pill size={17} className="text-sage-600" />
+                <span className="text-xs text-warm-gray-500">Terapia registrata</span>
+              </div>
+              <p className="text-2xl font-bold text-warm-gray-900">{medicationAdherence !== null ? `${medicationAdherence}%` : '—'}</p>
+              <p className="text-xs text-warm-gray-500">{medicationTracked} assunzioni verificate</p>
+            </div>
+          </div>
+
+          {trackedMeals.length > 0 && (
+            <div className="card">
+              <h2 className="font-semibold text-warm-gray-800 mb-1">Pasti registrati</h2>
+              <p className="text-xs text-warm-gray-500 mb-4">La costanza conta più della perfezione.</p>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={mealTrackingData} margin={{ left: -28, right: 4, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#8d877a' }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#8d877a' }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="breakfast" name={MEAL_TYPE_LABELS.breakfast} stackId="meals" fill="#d4a853" />
+                  <Bar dataKey="morning_snack" name={MEAL_TYPE_LABELS.morning_snack} stackId="meals" fill="#e6c879" />
+                  <Bar dataKey="lunch" name={MEAL_TYPE_LABELS.lunch} stackId="meals" fill="#5B8B76" />
+                  <Bar dataKey="afternoon_snack" name={MEAL_TYPE_LABELS.afternoon_snack} stackId="meals" fill="#8fb7a5" />
+                  <Bar dataKey="dinner" name={MEAL_TYPE_LABELS.dinner} stackId="meals" fill="#236874" />
+                  <Bar dataKey="night_snack" name={MEAL_TYPE_LABELS.night_snack} stackId="meals" fill="#6d8290" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-warm-gray-500">
+                {mealTypes.map(type => <span key={type}>{MEAL_TYPE_LABELS[type]}</span>)}
+              </div>
+            </div>
+          )}
+
+          {mealSensationData.length > 0 && (
+            <div className="card">
+              <h2 className="font-semibold text-warm-gray-800 mb-1">Fame, sazietà e soddisfazione</h2>
+              <p className="text-xs text-warm-gray-500 mb-4">Media giornaliera dei pasti registrati, scala 0–10.</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={mealSensationData} margin={{ left: -18, right: 8, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#8d877a' }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#8d877a' }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line type="monotone" dataKey="fame" name="Fame prima" stroke="#d95f76" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  <Line type="monotone" dataKey="sazieta" name="Sazietà dopo" stroke="#236874" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  <Line type="monotone" dataKey="soddisfazione" name="Soddisfazione" stroke="#d4a853" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  <Legend />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {medicationTracked > 0 && (
+            <div className="card">
+              <h2 className="font-semibold text-warm-gray-800 mb-1">Terapia e integratori</h2>
+              <p className="text-xs text-warm-gray-500 mb-4">Solo assunzioni esplicitamente registrate.</p>
+              <ResponsiveContainer width="100%" height={210}>
+                <BarChart data={medicationDailyData} margin={{ left: -28, right: 4, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#8d877a' }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#8d877a' }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="assunte" name="Assunte" stackId="therapy" fill="#5B8B76" />
+                  <Bar dataKey="nonAssunte" name="Non assunte" stackId="therapy" fill="#d95f76" radius={[4, 4, 0, 0]} />
+                  <Legend />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {isDemo && (
             <div className="card">
