@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ExternalLink } from 'lucide-react';
 import {
   getMoonAge,
   getMoonPhaseKey,
@@ -7,6 +7,14 @@ import {
   EIGHT_PRECEPTS,
   getNextMoonMilestones,
 } from '../../lib/contemplative-data';
+import { todayISO, formatDateLong } from '../../lib/utils';
+import {
+  getTibetanCalendarDay,
+  getUpcomingTibetanObservances,
+  qualityLabel,
+  TIBETAN_CALENDAR_SOURCE,
+  TIBETAN_CALENDAR_VERIFIED_THROUGH,
+} from '../../lib/tibetan-calendar-2026';
 
 interface Props { onBack: () => void; }
 
@@ -31,6 +39,9 @@ export function MoonPage({ onBack }: Props) {
   const phaseIcon = MOON_PHASE_ICONS[phaseKey];
   const milestones = getNextMoonMilestones();
   const isFavorable = FAVORABLE_PHASES.includes(phaseKey as FavorablePhase);
+  const today = todayISO();
+  const tibetanToday = getTibetanCalendarDay(today);
+  const upcoming = getUpcomingTibetanObservances(today);
 
   const illumination = Math.round(
     age < 14.76
@@ -49,12 +60,51 @@ export function MoonPage({ onBack }: Props) {
 
       {/* Disclaimer */}
       <div className="bg-warm-gray-50 border border-warm-gray-200 rounded-xl px-4 py-3 text-xs text-warm-gray-500 leading-relaxed">
-        Le fasi lunari sono parte della tradizione contemplativa NgalSo. L'uso del calendario lunare è facoltativo e non ha valore medico o scientifico.
+        Il giorno tibetano e le ricorrenze provengono dal calendario FPMT basato sul Men-Tsee-Khang. Le fasi lunari sottostanti sono stime astronomiche separate. Nessuna indicazione ha valore medico.
+      </div>
+
+      {tibetanToday && (
+        <div className="card border-amber-200 bg-amber-50">
+          <div className="flex items-start gap-3">
+            <CalendarDays size={22} className="text-amber-700 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Oggi nel calendario tibetano</p>
+              <h2 className="font-bold text-warm-gray-800 mt-1">Mese {tibetanToday.tibetanMonth}, giorno {tibetanToday.tibetanDay}</h2>
+              <p className="text-sm text-warm-gray-600 mt-1">Qualità astrologica: {qualityLabel(tibetanToday.quality)}</p>
+              {tibetanToday.observances?.map(item => <p key={item} className="text-sm font-medium text-amber-900 mt-2">{item}</p>)}
+              {tibetanToday.guidance && <p className="text-xs text-amber-700 mt-2">{tibetanToday.guidance}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <h2 className="font-semibold text-warm-gray-800 mb-3">Prossime ricorrenze verificate</h2>
+        {upcoming.length ? (
+          <div className="space-y-3">
+            {upcoming.map(day => (
+              <div key={day.date} className="border-b border-warm-gray-100 last:border-0 pb-3 last:pb-0">
+                <p className="text-sm font-semibold text-warm-gray-800 capitalize">{formatDateLong(day.date)}</p>
+                <p className="text-xs text-warm-gray-500">Mese {day.tibetanMonth}, giorno {day.tibetanDay}</p>
+                <p className="text-sm text-sage-700 mt-1">{day.observances?.join(' · ')}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-warm-gray-500">Nessuna ricorrenza pubblicata nel periodo verificato.</p>
+        )}
+        <div className="mt-4 pt-3 border-t border-warm-gray-100 text-xs text-warm-gray-500">
+          <p>Verificato fino al {TIBETAN_CALENDAR_VERIFIED_THROUGH.split('-').reverse().join('/')}.</p>
+          <a href={TIBETAN_CALENDAR_SOURCE} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sage-700 mt-1">
+            Fonte FPMT <ExternalLink size={12} />
+          </a>
+        </div>
       </div>
 
       {/* Current moon */}
       <div className="card text-center py-8">
         <div className="text-7xl mb-4">{phaseIcon}</div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-warm-gray-400 mb-1">Fase astronomica stimata</p>
         <h2 className="text-xl font-bold text-warm-gray-800">{phaseName}</h2>
         <p className="text-sm text-warm-gray-500 mt-1">
           Giorno {Math.floor(age)} del ciclo · Illuminazione ~{illumination}%

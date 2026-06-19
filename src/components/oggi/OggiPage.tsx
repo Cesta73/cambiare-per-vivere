@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Scale, Utensils, Droplets, Dumbbell, Heart, BookOpen, Target,
-  Check, Wind, Footprints, Sparkles, Route
+  Check, Wind, Footprints, Sparkles, Route, CalendarDays
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -14,6 +14,7 @@ import { QuickWaterModal } from './QuickWaterModal';
 import { QuickMoodModal } from './QuickMoodModal';
 import { QuickActivityModal } from './QuickActivityModal';
 import { QuickMealModal } from './QuickMealModal';
+import { getTibetanCalendarDay, qualityLabel } from '../../lib/tibetan-calendar-2026';
 
 const today = todayISO();
 
@@ -120,6 +121,7 @@ export function OggiPage() {
   const completedHabits = habits.filter(h => habitLogs.find(l => l.habit_id === h.id && l.completed));
   const waterMl = checkin?.water_ml ?? 0;
   const waterPct = Math.min((waterMl / 2000) * 100, 100);
+  const dharmaDay = getTibetanCalendarDay(today);
 
   const quickActions = [
     { id: 'weight', icon: Scale, label: 'Peso', color: 'action-petrol' },
@@ -173,6 +175,29 @@ export function OggiPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 font-medium">
           Modalità demo — i dati non vengono salvati permanentemente
         </div>
+      )}
+
+      {dharmaDay && (
+        <button
+          onClick={() => setActiveTab('dharma')}
+          className="card w-full text-left bg-gradient-to-br from-amber-50 to-sage-50 border-amber-200"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <CalendarDays size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Calendario tibetano verificato</p>
+              <p className="font-semibold text-warm-gray-800 mt-1">
+                Mese {dharmaDay.tibetanMonth}, giorno {dharmaDay.tibetanDay} · {qualityLabel(dharmaDay.quality)}
+              </p>
+              {dharmaDay.observances?.map(item => (
+                <p key={item} className="text-sm text-warm-gray-700 mt-1">{item}</p>
+              ))}
+              {dharmaDay.guidance && <p className="text-xs text-warm-gray-500 mt-2">{dharmaDay.guidance}</p>}
+            </div>
+          </div>
+        </button>
       )}
 
       {/* Daily state, immediately after the greeting */}
