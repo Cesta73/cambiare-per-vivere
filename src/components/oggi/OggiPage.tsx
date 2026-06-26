@@ -211,7 +211,7 @@ export function OggiPage() {
             { label: 'Umore', value: checkin?.mood_score, color: 'text-rose-500' },
             { label: 'Energia', value: checkin?.energy_score, color: 'text-amber-500' },
             { label: 'Motivazione', value: checkin?.motivation_score, color: 'text-sage-500' },
-            { label: 'Stress', value: checkin?.stress_score ? 6 - checkin.stress_score : null, color: 'text-petrol-500' },
+            { label: 'Stress', value: checkin?.stress_score, color: 'text-petrol-500' },
           ].map(item => (
             <div key={item.label} className="bg-warm-gray-50 rounded-xl p-3 text-center">
               <div className={`text-2xl font-bold ${item.color}`}>{item.value ?? '—'}</div>

@@ -152,7 +152,7 @@ export interface FavoriteMeal {
   carbs_g: number | null;
   fat_g: number | null;
   fiber_g: number | null;
-  calories_source: 'open_food_facts' | 'manual' | null;
+  calories_source: 'open_food_facts' | 'manual' | 'deepseek_estimate' | null;
   source_product: string | null;
   created_at: string;
   updated_at: string;
@@ -366,7 +366,13 @@ export interface HungerSatietyEntry {
   carbs_g: number | null;
   fat_g: number | null;
   fiber_g: number | null;
-  calories_source: 'open_food_facts' | 'manual' | null;
+  calories_source: 'open_food_facts' | 'manual' | 'deepseek_estimate' | null;
+  calories_min_kcal: number | null;
+  calories_max_kcal: number | null;
+  calorie_confidence: 'low' | 'medium' | 'high' | null;
+  calorie_assumptions: string[];
+  calorie_unclear_items: string[];
+  calorie_emotional_note: string | null;
   source_product: string | null;
   planned_meal_id: string | null;
   created_at: string;

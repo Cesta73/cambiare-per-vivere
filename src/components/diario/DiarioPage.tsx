@@ -192,7 +192,7 @@ export function DiarioPage() {
               <ScoreButtons label="Umore" value={checkin.mood_score ?? null} onChange={v => saveCheckin({ mood_score: v })} colorScale />
               <ScoreButtons label="Energia" value={checkin.energy_score ?? null} onChange={v => saveCheckin({ energy_score: v })} colorScale />
               <ScoreButtons label="Motivazione" value={checkin.motivation_score ?? null} onChange={v => saveCheckin({ motivation_score: v })} colorScale />
-              <ScoreButtons label="Stress (1=alto)" value={checkin.stress_score ?? null} onChange={v => saveCheckin({ stress_score: v })} />
+              <ScoreButtons label="Stress (1=basso, 5=alto)" value={checkin.stress_score ?? null} onChange={v => saveCheckin({ stress_score: v })} />
             </div>
           </div>
 

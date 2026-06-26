@@ -47,7 +47,7 @@ export function QuickMoodModal({ checkin, onClose }: Props) {
         <ScoreButtons label="Umore (1=basso, 5=alto)" value={mood} onChange={setMood} colorScale />
         <ScoreButtons label="Energia (1=poca, 5=tanta)" value={energy} onChange={setEnergy} colorScale />
         <ScoreButtons label="Motivazione (1=bassa, 5=alta)" value={motivation} onChange={setMotivation} colorScale />
-        <ScoreButtons label="Stress (1=alto, 5=basso)" value={stress} onChange={setStress} />
+        <ScoreButtons label="Stress (1=basso, 5=alto)" value={stress} onChange={setStress} />
         <button onClick={handleSave} disabled={loading} className="btn-primary w-full">
           {loading ? 'Salvataggio...' : 'Salva'}
         </button>
