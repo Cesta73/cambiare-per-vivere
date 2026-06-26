@@ -17,6 +17,19 @@ const MEAL_SUGGESTIONS = [
   { name: 'Yogurt e frutta', ingredients: 'yogurt, frutta fresca, avena' },
 ];
 
+const guessShoppingCategory = (name: string): string => {
+  const normalized = name.toLocaleLowerCase('it');
+  if (/mela|pera|banana|arancia|frutta|uva|fragola|kiwi|albicocc/.test(normalized)) return 'frutta';
+  if (/carota|zucchin|melanzan|pomodor|insalat|verdura|spinaci|broccoli|cipoll|aglio|fagiolin/.test(normalized)) return 'verdura';
+  if (/pollo|manzo|maiale|pesce|uov|salmone|tonno|prosciutto|carne|legum|fagiol|ceci|lenticch/.test(normalized)) return 'proteine';
+  if (/latte|yogurt|formaggio|burro|panna|ricotta/.test(normalized)) return 'latticini';
+  if (/pasta|riso|pane|farina|cereal|avena|farro|biscott/.test(normalized)) return 'cereali';
+  if (/surgelat/.test(normalized)) return 'surgelati';
+  if (/acqua|succo|bevanda|tè|te|caffè|caffe/.test(normalized)) return 'bevande';
+  if (/olio|aceto|sale|spezi|dispensa|marmellata/.test(normalized)) return 'dispensa';
+  return 'altro';
+};
+
 interface FoodResult {
   name: string;
   brand: string;
@@ -479,7 +492,8 @@ export function SettimanaPage() {
 
   const generateShoppingList = async () => {
     if (!user) return;
-    const ingredients = meals
+    const shoppingMeals = meals.filter(meal => meal.plan_date >= todayISO() && !meal.is_completed);
+    const ingredients = shoppingMeals
       .flatMap(meal => (meal.ingredients ?? '').split(','))
       .map(item => item.trim())
       .filter(Boolean);
@@ -488,23 +502,37 @@ export function SettimanaPage() {
       showToast('Aggiungi gli ingredienti ai pasti per creare la lista.', 'info');
       return;
     }
-    const { data: list, error } = await supabase.from('shopping_lists').insert({
-      user_id: user.id,
-      name: `Spesa ${dateToISO(weekStart)}`,
-      week_start: dateToISO(weekStart),
-    }).select().maybeSingle();
+    const weekStartISO = dateToISO(weekStart);
+    const { data: existingList } = await supabase.from('shopping_lists').select('*')
+      .eq('user_id', user.id).eq('week_start', weekStartISO).eq('is_completed', false)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const listResult = existingList
+      ? { data: existingList, error: null }
+      : await supabase.from('shopping_lists').insert({
+          user_id: user.id,
+          name: `Spesa ${weekStartISO}`,
+          week_start: weekStartISO,
+        }).select().maybeSingle();
+    const { data: list, error } = listResult;
     if (error || !list) {
       showToast(`Lista non creata: ${error?.message ?? 'errore sconosciuto'}`, 'error');
       return;
     }
-    const { error: itemsError } = await supabase.from('shopping_list_items').insert(unique.map(name => ({
+    const { data: currentItems } = await supabase.from('shopping_list_items').select('name').eq('list_id', list.id);
+    const currentNames = new Set((currentItems ?? []).map(item => item.name.trim().toLocaleLowerCase('it')));
+    const missing = unique.filter(name => !currentNames.has(name.toLocaleLowerCase('it')));
+    if (!missing.length) {
+      showToast('La lista della spesa è già aggiornata.', 'success');
+      return;
+    }
+    const { error: itemsError } = await supabase.from('shopping_list_items').insert(missing.map(name => ({
       user_id: user.id,
       list_id: list.id,
       name,
-      category: 'altro',
+      category: guessShoppingCategory(name),
       is_manual: false,
     })));
-    showToast(itemsError ? `Elementi non salvati: ${itemsError.message}` : `Lista della spesa creata con ${unique.length} elementi.`, itemsError ? 'error' : 'success');
+    showToast(itemsError ? `Elementi non salvati: ${itemsError.message}` : `Lista aggiornata con ${missing.length} elementi.`, itemsError ? 'error' : 'success');
   };
 
   const goToPrevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
@@ -514,6 +542,8 @@ export function SettimanaPage() {
   const getConsumedMealsForDay = (date: string) => consumedMeals.filter(
     meal => dateToISO(new Date(meal.entry_datetime)) === date,
   );
+  const getConsumedMealsForSlot = (date: string, mealType: string) => getConsumedMealsForDay(date)
+    .filter(meal => meal.meal_type === mealType);
   const getShiftForDay = (date: string) => shifts.find(s => s.date === date);
 
   const weekLabel = `${formatDateShort(dateToISO(weekStart))} – ${formatDateShort(dateToISO(weekDays[6]))}`;
@@ -545,11 +575,35 @@ export function SettimanaPage() {
             <p className="text-sm text-warm-gray-600 mt-1">Puoi confermare il pasto pianificato spuntandolo oppure registrare una variazione.</p>
             <button onClick={() => setRegisterMeal(true)} className="btn-primary w-full mt-4">Registra una variazione</button>
           </div>
+          <div className="flex items-center justify-between card py-3">
+            <button onClick={goToPrevWeek} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors" title="Settimana precedente">
+              <ChevronLeft size={20} className="text-warm-gray-600" />
+            </button>
+            <span className="font-semibold text-warm-gray-800">{weekLabel}</span>
+            <button onClick={goToNextWeek} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors" title="Settimana successiva">
+              <ChevronRight size={20} className="text-warm-gray-600" />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {weekDays.map(day => {
+              const iso = dateToISO(day);
+              const count = getConsumedMealsForDay(iso).length;
+              const isSelected = iso === selectedDay;
+              return (
+                <button key={iso} onClick={() => setSelectedDay(iso)}
+                  className={`min-w-0 py-2 rounded-lg text-center ${isSelected ? 'bg-sage-600 text-white' : 'bg-white text-warm-gray-600'}`}>
+                  <span className="block text-xs uppercase">{getDayNameShort(iso)}</span>
+                  <span className="block text-sm font-bold">{day.getDate()}</span>
+                  <span className={`block text-xs ${isSelected ? 'text-sage-100' : 'text-warm-gray-400'}`}>{count || '·'}</span>
+                </button>
+              );
+            })}
+          </div>
           <div className="card">
-            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti consumati oggi</h2>
-            {getConsumedMealsForDay(todayISO()).length === 0 ? (
-              <p className="text-sm text-warm-gray-400">Nessun pasto consumato registrato oggi.</p>
-            ) : getConsumedMealsForDay(todayISO()).map(meal => (
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti consumati · {formatDateShort(selectedDay)}</h2>
+            {getConsumedMealsForDay(selectedDay).length === 0 ? (
+              <p className="text-sm text-warm-gray-400">Nessun pasto consumato registrato in questa giornata.</p>
+            ) : getConsumedMealsForDay(selectedDay).map(meal => (
               <div key={meal.id} className="p-3 rounded-xl mb-2 bg-sage-50 border border-sage-100">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -562,15 +616,16 @@ export function SettimanaPage() {
                       ].filter(Boolean).join(' · ') || 'Registrazione parziale'}
                     </p>
                   </div>
-                  <span className="text-xs text-sage-700">{MEAL_TYPE_LABELS[meal.meal_type ?? '']}</span>
+                  <span className="text-xs text-sage-700">{new Date(meal.entry_datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
+                {meal.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-2">{meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''}</p>}
               </div>
             ))}
           </div>
           <div className="card">
-            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti pianificati oggi</h2>
-            {getMealsForDay(todayISO()).length === 0 ? <p className="text-sm text-warm-gray-400">Nessun pasto pianificato oggi.</p> :
-              getMealsForDay(todayISO()).map(meal => (
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Pasti pianificati · {formatDateShort(selectedDay)}</h2>
+            {getMealsForDay(selectedDay).length === 0 ? <p className="text-sm text-warm-gray-400">Nessun pasto pianificato in questa giornata.</p> :
+              getMealsForDay(selectedDay).map(meal => (
                 <button key={meal.id} onClick={() => toggleMealComplete(meal)} className={`w-full flex items-center gap-3 p-3 rounded-xl mb-2 text-left ${meal.is_completed ? 'bg-sage-50' : 'bg-warm-gray-50'}`}>
                   <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${meal.is_completed ? 'bg-sage-600 border-sage-600 text-white' : 'border-warm-gray-300'}`}>{meal.is_completed && <Check size={14} />}</span>
                   <span className="flex-1 text-sm font-medium">{meal.name}</span>
@@ -599,6 +654,7 @@ export function SettimanaPage() {
           const iso = dateToISO(day);
           const shift = getShiftForDay(iso);
           const dayMeals = getMealsForDay(iso);
+          const dayConsumedMeals = getConsumedMealsForDay(iso);
           const isToday = iso === todayISO();
           const isSelected = iso === selectedDay;
           return (
@@ -620,9 +676,9 @@ export function SettimanaPage() {
                   {shift.shift_type === 'morning' ? 'Mat' : shift.shift_type === 'afternoon' ? 'Pom' : shift.shift_type === 'night' ? 'Not' : shift.shift_type === 'rest' ? 'Rip' : 'Per'}
                 </span>
               )}
-              {dayMeals.length > 0 && (
+              {(dayMeals.length > 0 || dayConsumedMeals.length > 0) && (
                 <span className={`text-xs mt-0.5 ${isSelected ? 'text-sage-200' : 'text-warm-gray-400'}`}>
-                  {dayMeals.length} pasti
+                  {dayConsumedMeals.length > 0 ? `${dayConsumedMeals.length} registrati` : `${dayMeals.length} previsti`}
                 </span>
               )}
             </button>
@@ -645,6 +701,7 @@ export function SettimanaPage() {
 
           {MEAL_TYPES.map(mealType => {
             const dayMeals = getMealsForDay(selectedDay).filter(m => m.meal_type === mealType);
+            const actualMeals = getConsumedMealsForSlot(selectedDay, mealType);
             return (
               <div key={mealType} className="card">
                 <div className="flex items-center justify-between mb-2">
@@ -661,7 +718,7 @@ export function SettimanaPage() {
                   </div>
                 </div>
                 {dayMeals.length === 0 ? (
-                  <p className="text-xs text-warm-gray-300 italic">Non pianificato</p>
+                  <p className="text-xs text-warm-gray-300 italic">Nessun pasto pianificato</p>
                 ) : (
                   <div className="space-y-2">
                     {dayMeals.map(meal => (
@@ -684,6 +741,27 @@ export function SettimanaPage() {
                             <Trash2 size={13} />
                           </button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {actualMeals.length > 0 && (
+                  <div className={`${dayMeals.length > 0 ? 'mt-3 pt-3 border-t border-warm-gray-100' : 'mt-2'} space-y-2`}>
+                    <p className="text-xs font-semibold uppercase text-sage-700">Registrato da Jarvis</p>
+                    {actualMeals.map(meal => (
+                      <div key={meal.id} className="rounded-lg bg-sage-50 border border-sage-100 p-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-warm-gray-800">{meal.meal_name || 'Pasto registrato'}</p>
+                          <span className="text-xs text-sage-700 flex-shrink-0">{new Date(meal.entry_datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-xs text-warm-gray-500 mt-1">
+                          {[
+                            meal.pre_hunger !== null && `Fame ${meal.pre_hunger}/10`,
+                            meal.post_satiety !== null && `Sazietà ${meal.post_satiety}/10`,
+                            meal.post_satisfaction !== null && `Soddisfazione ${meal.post_satisfaction}/10`,
+                          ].filter(Boolean).join(' · ') || 'Dati del pasto ancora parziali'}
+                        </p>
+                        {meal.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-1">{meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''}</p>}
                       </div>
                     ))}
                   </div>

@@ -56,18 +56,26 @@ export function ShoppingPage({ onBack }: Props) {
     weekEnd.setDate(weekEnd.getDate() + 6);
     const weekEndISO = dateToISO(weekEnd);
 
-    const { data: meals } = await supabase.from('planned_meals').select('*').eq('user_id', user.id).gte('plan_date', weekStartISO).lte('plan_date', weekEndISO);
+    const { data: meals } = await supabase.from('planned_meals').select('*').eq('user_id', user.id)
+      .gte('plan_date', weekStartISO).lte('plan_date', weekEndISO)
+      .gte('plan_date', todayISO()).eq('is_completed', false);
     if (!meals?.length) { showToast('Nessun pasto pianificato per questa settimana.', 'info'); return; }
 
-    const { data: newList } = await supabase.from('shopping_lists').insert({
-      user_id: user.id,
-      name: `Lista settimana ${weekStartISO}`,
-      week_start: weekStartISO,
-    }).select().maybeSingle();
+    const { data: currentList } = await supabase.from('shopping_lists').select('*')
+      .eq('user_id', user.id).eq('week_start', weekStartISO).eq('is_completed', false)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const { data: newList } = currentList
+      ? { data: currentList }
+      : await supabase.from('shopping_lists').insert({
+          user_id: user.id,
+          name: `Lista settimana ${weekStartISO}`,
+          week_start: weekStartISO,
+        }).select().maybeSingle();
 
     if (!newList) return;
 
-    const ingredientSet = new Set<string>();
+    const { data: existingItems } = await supabase.from('shopping_list_items').select('name').eq('list_id', newList.id);
+    const ingredientSet = new Set<string>((existingItems ?? []).map(item => item.name.trim().toLocaleLowerCase('it')));
     const insertItems: Partial<ShoppingListItem>[] = [];
 
     meals.forEach(meal => {
@@ -94,7 +102,7 @@ export function ShoppingPage({ onBack }: Props) {
     setLists(prev => [newList, ...prev]);
     setSelectedList(newList);
     await loadItems(newList.id);
-    showToast(`Lista generata con ${insertItems.length} elementi!`, 'success');
+    showToast(insertItems.length ? `Lista aggiornata con ${insertItems.length} elementi!` : 'La lista è già aggiornata.', 'success');
   };
 
   const guessCategory = (name: string): string => {
