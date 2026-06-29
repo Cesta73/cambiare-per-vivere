@@ -281,7 +281,7 @@ export function OggiPage() {
       {/* Quick Actions */}
       <div>
         <h2 className="section-title mb-3 px-1">Azioni rapide</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {quickActions.map(({ id, icon: Icon, label, color }) => (
             <button
               key={id}

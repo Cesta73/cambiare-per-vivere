@@ -14,7 +14,7 @@ export function BottomNav() {
   const { activeTab, setActiveTab } = useApp();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom px-3 pb-2 pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom px-3 pb-2 pointer-events-none lg:hidden">
       <div className="bottom-dock max-w-lg mx-auto flex justify-around px-1.5 py-1.5 pointer-events-auto">
         {NAV_ITEMS.map(({ tab, label, Icon }) => (
           <button
