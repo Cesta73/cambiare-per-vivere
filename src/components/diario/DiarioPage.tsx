@@ -212,6 +212,18 @@ export function DiarioPage() {
             ))}
             {phase === 'mattino' && (
               <div>
+                <label className="label">La cosa più importante di oggi</label>
+                <input
+                  className="input-field text-sm"
+                  placeholder="Una priorità concreta e realistica..."
+                  value={checkin.top_priority ?? ''}
+                  onChange={e => setCheckin(prev => ({ ...prev, top_priority: e.target.value }))}
+                  onBlur={e => saveCheckin({ top_priority: e.target.value || null })}
+                />
+              </div>
+            )}
+            {phase === 'mattino' && (
+              <div>
                 <label className="label">Cosa desidero fare diversamente oggi?</label>
                 <textarea
                   className="input-field h-20 resize-none text-sm"

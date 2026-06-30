@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Scale, Utensils, Droplets, Dumbbell, Heart, BookOpen, Target,
-  Check, Wind, Footprints, Sparkles, Route, CalendarDays
+  Check, Wind, Footprints, Sparkles, CalendarDays, Pill, Database
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -124,14 +124,16 @@ export function OggiPage() {
   const dharmaDay = getTibetanCalendarDay(today);
 
   const quickActions = [
-    { id: 'weight', icon: Scale, label: 'Peso', color: 'action-petrol' },
     { id: 'meal', icon: Utensils, label: 'Pasto', color: 'action-amber' },
     { id: 'water', icon: Droplets, label: 'Acqua', color: 'action-water' },
-    { id: 'activity', icon: Dumbbell, label: 'Attività', color: 'action-sage' },
+    { id: 'therapy', icon: Pill, label: 'Terapia', color: 'action-petrol' },
     { id: 'mood', icon: Heart, label: 'Come sto', color: 'action-rose' },
     { id: 'diary', icon: BookOpen, label: 'Diario', color: 'action-ink' },
+    { id: 'activity', icon: Dumbbell, label: 'Attività', color: 'action-sage' },
+    { id: 'agenda', icon: CalendarDays, label: 'Agenda', color: 'action-earth' },
     { id: 'dharma', icon: Sparkles, label: 'Dharma', color: 'action-gold' },
-    { id: 'cammino', icon: Route, label: 'Mio Cammino', color: 'action-earth' },
+    { id: 'weight', icon: Scale, label: 'Peso e misure', color: 'action-petrol' },
+    { id: 'raw', icon: Database, label: 'Dati grezzi', color: 'action-ink' },
   ] as const;
 
   if (loading) {
@@ -249,35 +251,6 @@ export function OggiPage() {
         )}
       </div>
 
-      {/* Contemplative quick card */}
-      <div className="card bg-gradient-to-br from-sage-50 to-petrol-50 border-sage-200">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="text-sage-600" />
-          <h2 className="font-semibold text-warm-gray-800 text-sm">Come stai in questo momento?</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { key: 'emergency1', label: 'Pausa 1 min', sub: 'Scarico rapido' },
-            { key: 'emergency2', label: 'Ritorno al cuore', sub: '2 min' },
-          ].map(p => (
-            <button
-              key={p.key}
-              onClick={() => setActiveTab('dharma')}
-              className="bg-white/70 hover:bg-white text-left rounded-xl px-3 py-2.5 transition-all active:scale-98 border border-sage-100"
-            >
-              <p className="text-xs font-semibold text-warm-gray-800">{p.label}</p>
-              <p className="text-xs text-warm-gray-400">{p.sub}</p>
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => setActiveTab('dharma')}
-          className="mt-2 w-full text-xs text-sage-600 hover:text-sage-800 font-medium text-center py-1"
-        >
-          Apri Ritrova il Centro →
-        </button>
-      </div>
-
       {/* Quick Actions */}
       <div>
         <h2 className="section-title mb-3 px-1">Azioni rapide</h2>
@@ -288,7 +261,9 @@ export function OggiPage() {
               onClick={() => {
                 if (id === 'diary') setActiveTab('diario');
                 else if (id === 'dharma') setActiveTab('dharma');
-                else if (id === 'cammino') setActiveTab('cammino');
+                else if (id === 'agenda') setActiveTab('agenda');
+                else if (id === 'raw') setActiveTab('raw-data');
+                else if (id === 'therapy') setActiveTab('agenda');
                 else setModal(id as typeof modal);
               }}
               className={`quick-action ${color}`}
@@ -301,7 +276,7 @@ export function OggiPage() {
       </div>
 
       <button
-        onClick={() => setActiveTab('registro')}
+        onClick={() => setActiveTab('raw-data')}
         className="card w-full text-left bg-gradient-to-br from-white to-sage-50 border-sage-200"
       >
         <div className="flex items-center justify-between gap-3">

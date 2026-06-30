@@ -93,6 +93,7 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   aerobic: 'Attività aerobica',
   strength: 'Rinforzo muscolare',
   mobility: 'Mobilità',
+  yoga: 'Yoga',
   daily: 'Attività quotidiana',
   other: 'Altra attività',
 };

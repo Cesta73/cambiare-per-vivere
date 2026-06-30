@@ -1,11 +1,11 @@
-import { Sun, CalendarDays, ListChecks, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp, type AppTab } from '../../contexts/AppContext';
 
 const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', Icon: Sun },
-  { tab: 'registro', label: 'Registro', Icon: ListChecks },
-  { tab: 'settimana', label: 'Settimana', Icon: CalendarDays },
+  { tab: 'diario', label: 'Diario', Icon: BookOpen },
+  { tab: 'agenda', label: 'Agenda', Icon: CalendarDays },
   { tab: 'progressi', label: 'Progressi', Icon: TrendingUp },
   { tab: 'altro', label: 'Altro', Icon: MoreHorizontal },
 ];

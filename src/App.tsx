@@ -3,21 +3,21 @@ import { AuthScreen } from './components/auth/AuthScreen';
 import { Onboarding } from './components/auth/Onboarding';
 import { BottomNav } from './components/layout/BottomNav';
 import { OggiPage } from './components/oggi/OggiPage';
-import { SettimanaPage } from './components/settimana/SettimanaPage';
 import { DiarioPage } from './components/diario/DiarioPage';
+import { AgendaPage } from './components/agenda/AgendaPage';
+import { RawDataPage } from './components/raw-data/RawDataPage';
 import { ProgressiPage } from './components/progressi/ProgressiPage';
 import { AltroPage } from './components/altro/AltroPage';
 import { CamminoPage } from './components/cammino/CamminoPage';
 import { RitrovaIlCentroPage } from './components/centro/RitrovaIlCentroPage';
 import { ToastContainer } from './components/ui/Toast';
 import { ReminderWatcher } from './components/reminders/ReminderWatcher';
-import { RegistroPage } from './components/registro/RegistroPage';
 import {
   BookOpen,
   CalendarDays,
   HeartPulse,
   Home,
-  ListChecks,
+  Database,
   MoreHorizontal,
   Moon,
   Route,
@@ -29,12 +29,12 @@ import type { AppTab } from './contexts/AppContext';
 
 const DESKTOP_NAV: { tab: AppTab; label: string; detail: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', detail: 'Bussola quotidiana', Icon: Home },
-  { tab: 'registro', label: 'Registro', detail: 'Cosa ha salvato Jarvis', Icon: ListChecks },
-  { tab: 'settimana', label: 'Settimana', detail: 'Pasti, turni e piano', Icon: CalendarDays },
-  { tab: 'progressi', label: 'Progressi', detail: 'Andamento e segnali', Icon: TrendingUp },
   { tab: 'diario', label: 'Diario', detail: 'Riflessioni e continuità', Icon: BookOpen },
+  { tab: 'agenda', label: 'Agenda', detail: 'Impegni, turni e terapie', Icon: CalendarDays },
+  { tab: 'progressi', label: 'Progressi', detail: 'Andamento e segnali', Icon: TrendingUp },
   { tab: 'cammino', label: 'Cammino', detail: 'Verso Santiago 2027', Icon: Route },
-  { tab: 'dharma', label: 'Centro', detail: 'Pratica e presenza', Icon: Moon },
+  { tab: 'dharma', label: 'Dharma', detail: 'Pratica e presenza', Icon: Moon },
+  { tab: 'raw-data', label: 'Dati grezzi', detail: 'Controllo registrazioni', Icon: Database },
   { tab: 'altro', label: 'Altro', detail: 'Strumenti e impostazioni', Icon: MoreHorizontal },
 ];
 
@@ -121,8 +121,8 @@ function DesktopRightRail() {
           <h2 className="font-semibold text-warm-gray-800">Presenza quotidiana</h2>
         </div>
         <div className="space-y-3 text-sm">
-          <button onClick={() => setActiveTab('registro')} className="w-full text-left rounded-2xl bg-white/70 border border-sage-100 p-3 hover:bg-white transition-colors">
-            <p className="font-semibold text-warm-gray-800">Controlla il registro</p>
+          <button onClick={() => setActiveTab('raw-data')} className="w-full text-left rounded-2xl bg-white/70 border border-sage-100 p-3 hover:bg-white transition-colors">
+            <p className="font-semibold text-warm-gray-800">Controlla i dati</p>
             <p className="text-xs text-warm-gray-500 mt-1">Vedi cosa è stato salvato da Jarvis.</p>
           </button>
           <button onClick={() => setActiveTab('cammino')} className="w-full text-left rounded-2xl bg-white/70 border border-sage-100 p-3 hover:bg-white transition-colors">
@@ -130,7 +130,7 @@ function DesktopRightRail() {
             <p className="text-xs text-warm-gray-500 mt-1">Preparazione graduale a Compostela.</p>
           </button>
           <button onClick={() => setActiveTab('dharma')} className="w-full text-left rounded-2xl bg-white/70 border border-sage-100 p-3 hover:bg-white transition-colors">
-            <p className="font-semibold text-warm-gray-800">Ritrova il centro</p>
+            <p className="font-semibold text-warm-gray-800">Dharma</p>
             <p className="text-xs text-warm-gray-500 mt-1">Pratiche brevi quando serve.</p>
           </button>
         </div>
@@ -186,9 +186,9 @@ function AppContent() {
         <DesktopSidebar />
         <main className="app-main max-w-lg mx-auto px-4 pt-5 pb-28 lg:max-w-none lg:w-full lg:px-0 lg:pt-0 lg:pb-6">
           {activeTab === 'oggi' && <OggiPage />}
-          {activeTab === 'registro' && <RegistroPage />}
-          {activeTab === 'settimana' && <SettimanaPage />}
           {activeTab === 'diario' && <DiarioPage />}
+          {activeTab === 'agenda' && <AgendaPage />}
+          {activeTab === 'raw-data' && <RawDataPage />}
           {activeTab === 'progressi' && <ProgressiPage />}
           {activeTab === 'altro' && <AltroPage />}
           {activeTab === 'cammino' && <CamminoPage onBack={() => setActiveTab('oggi')} />}

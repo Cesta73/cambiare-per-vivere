@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse, Pill, Utensils } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
+  BarChart, Bar, Legend, ComposedChart
 } from 'recharts';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { BodyMeasurement, ActivityEntry, DailyCheckin, HungerSatietyEntry, MedicationLog } from '../../lib/supabase';
-import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS } from '../../lib/utils';
+import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 
 type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
@@ -107,7 +107,22 @@ export function ProgressiPage() {
     .slice(-8)
     .map(([date, min]) => ({ date: formatDateShort(date), min }));
 
+  const activityByType = Object.entries(activities.reduce<Record<string, { minutes: number; sessions: number; calories: number }>>((acc, activity) => {
+    acc[activity.activity_type] ??= { minutes: 0, sessions: 0, calories: 0 };
+    acc[activity.activity_type].minutes += activity.duration_minutes;
+    acc[activity.activity_type].sessions += 1;
+    acc[activity.activity_type].calories += activity.calories_burned_kcal ?? 0;
+    return acc;
+  }, {})).sort(([, a], [, b]) => b.minutes - a.minutes);
+
   const calorieTarget = profile?.daily_calorie_target ?? 2200;
+  const measuredBmr = [...measurements].reverse().find(item => item.basal_metabolism_kcal)?.basal_metabolism_kcal ?? null;
+  const currentWeight = latestWeightMeas?.weight_kg ?? profile?.start_weight ?? null;
+  const currentAge = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
+  const calculatedBmr = currentWeight && profile?.height_cm && currentAge
+    ? Math.round(10 * currentWeight + 6.25 * profile.height_cm - 5 * currentAge + 5)
+    : Math.round(calorieTarget * 0.72);
+  const basalMetabolism = measuredBmr ?? calculatedBmr;
   const calorieByDay = new Map<string, { eaten: number; burned: number }>();
   meals.forEach(meal => {
     const date = dateToISO(new Date(meal.entry_datetime));
@@ -125,16 +140,19 @@ export function ProgressiPage() {
     date.setDate(date.getDate() - (13 - index));
     const key = dateToISO(date);
     const values = calorieByDay.get(key) ?? { eaten: 0, burned: 0 };
-    return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, bruciate: values.burned };
+    const consumed = basalMetabolism + values.burned;
+    return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, attivita: values.burned, consumate: consumed, bilancio: values.eaten - consumed };
   });
-  const calorieWeeklyMap = calorieDailyData.reduce<Record<string, { obiettivo: number; mangiate: number; bruciate: number }>>((acc, day) => {
+  const calorieWeeklyMap = calorieDailyData.reduce<Record<string, { obiettivo: number; mangiate: number; attivita: number; consumate: number; bilancio: number }>>((acc, day) => {
     const parts = day.label.split('/');
     const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     const key = dateToISO(getWeekStart(date));
-    acc[key] ??= { obiettivo: 0, mangiate: 0, bruciate: 0 };
+    acc[key] ??= { obiettivo: 0, mangiate: 0, attivita: 0, consumate: 0, bilancio: 0 };
     acc[key].obiettivo += day.obiettivo;
     acc[key].mangiate += day.mangiate;
-    acc[key].bruciate += day.bruciate;
+    acc[key].attivita += day.attivita;
+    acc[key].consumate += day.consumate;
+    acc[key].bilancio += day.bilancio;
     return acc;
   }, {});
   const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({ date: formatDateShort(date), ...values }));
@@ -193,6 +211,16 @@ export function ProgressiPage() {
   const medicationAdherence = medicationTracked ? Math.round(medicationTaken / medicationTracked * 100) : null;
   const trackedMeals = meals.filter(meal => recentDates.includes(dateToISO(new Date(meal.entry_datetime))));
   const trackedMealDays = new Set(trackedMeals.map(meal => dateToISO(new Date(meal.entry_datetime)))).size;
+
+  const dynamicDomain = (values: Array<number | null | undefined>): [number, number] => {
+    const finite = values.filter((value): value is number => Number.isFinite(value));
+    if (!finite.length) return [0, 1];
+    return [Math.floor(Math.min(...finite) - 1), Math.ceil(Math.max(...finite) + 1)];
+  };
+  const circumferenceDomain = dynamicDomain(circumferenceData.flatMap(item => [item.addome, item.collo]));
+  const pressureDomain = dynamicDomain(bloodPressureData.flatMap(item => [item.massima, item.minima]));
+  const moodDomain = dynamicDomain(checkins.flatMap(item => [item.mood_score, item.energy_score, item.motivation_score, item.stress_score !== null ? 6 - item.stress_score : null]));
+  const sensationDomain = dynamicDomain(mealSensationData.flatMap(item => [item.fame, item.sazieta, item.soddisfazione]));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -343,7 +371,7 @@ export function ProgressiPage() {
                 <LineChart data={circumferenceData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#8d877a' }} />
-                  <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fontSize: 11, fill: '#8d877a' }} unit=" cm" />
+                  <YAxis domain={circumferenceDomain} tick={{ fontSize: 11, fill: '#8d877a' }} unit=" cm" />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="addome" name="Addome (cm)" stroke="#236874" strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="collo" name="Collo (cm)" stroke="#74aa95" strokeWidth={2} dot={{ r: 3 }} />
@@ -361,7 +389,7 @@ export function ProgressiPage() {
                   <LineChart data={bloodPressureData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#8d877a' }} />
-                    <YAxis domain={['dataMin - 10', 'dataMax + 10']} tick={{ fontSize: 11, fill: '#8d877a' }} />
+                    <YAxis domain={pressureDomain} tick={{ fontSize: 11, fill: '#8d877a' }} />
                     <Tooltip content={<CustomTooltip />} />
                     <Line type="monotone" dataKey="massima" name="Massima" stroke="#d95f76" strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="minima" name="Minima" stroke="#236874" strokeWidth={2} dot={{ r: 3 }} />
@@ -396,9 +424,9 @@ export function ProgressiPage() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div><p className="text-xs text-warm-gray-500">Obiettivo</p><p className="font-bold text-petrol-700">{todayCalories.obiettivo}</p></div>
               <div><p className="text-xs text-warm-gray-500">Mangiate</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
-              <div><p className="text-xs text-warm-gray-500">Bruciate</p><p className="font-bold text-sage-700">{todayCalories.bruciate}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Consumate</p><p className="font-bold text-sage-700">{todayCalories.consumate}</p></div>
             </div>
-            <p className="text-xs text-warm-gray-500 mt-3">Calorie e attività sono stime informative, non prescrizioni mediche.</p>
+              <p className="text-xs text-warm-gray-500 mt-3">Metabolismo basale: {basalMetabolism} kcal ({measuredBmr ? 'misurato' : 'stimato'}). Stime non mediche.</p>
           </div>
           <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
             <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
@@ -414,25 +442,34 @@ export function ProgressiPage() {
             </div>
           </div>
           <div className="card">
-            <h2 className="font-semibold text-warm-gray-800 mb-4">Obiettivo, mangiate e bruciate</h2>
+            <h2 className="font-semibold text-warm-gray-800 mb-4">Calorie assunte e consumate</h2>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={calorieChartData} margin={{ left: -15, right: 5, top: 5, bottom: 5 }}>
+              <ComposedChart data={calorieChartData} margin={{ left: -15, right: 5, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
                 <YAxis tick={{ fontSize: 10, fill: '#8d877a' }} unit=" kcal" />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Bar dataKey="obiettivo" name="Obiettivo" fill="#236874" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="mangiate" name="Mangiate" fill="#d4a853" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="bruciate" name="Bruciate" fill="#5B8B76" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Bar dataKey="mangiate" name="Assunte" fill="#d4a853" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="consumate" name="Consumate stimate" stroke="#236874" strokeWidth={3} dot={{ r: 2 }} />
+              </ComposedChart>
             </ResponsiveContainer>
+            <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+              <div className="rounded-xl bg-amber-50 p-2"><p className="text-[10px] text-warm-gray-500">Assunte</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
+              <div className="rounded-xl bg-petrol-50 p-2"><p className="text-[10px] text-warm-gray-500">Consumate</p><p className="font-bold text-petrol-700">{todayCalories.consumate}</p></div>
+              <div className={`rounded-xl p-2 ${todayCalories.bilancio <= 0 ? 'bg-sage-50' : 'bg-rose-50'}`}><p className="text-[10px] text-warm-gray-500">Bilancio</p><p className="font-bold text-warm-gray-800">{todayCalories.bilancio > 0 ? '+' : ''}{todayCalories.bilancio}</p></div>
+            </div>
+            <p className="text-[11px] text-warm-gray-400 mt-3">Consumate = metabolismo basale + attività registrata. Stime non mediche.</p>
           </div>
         </div>
       )}
 
       {tab === 'attivita' && (
         <div className="space-y-4">
+          {activityByType.length > 0 && <div className="card">
+            <h2 className="font-semibold text-warm-gray-800 mb-3">Attività per tipo</h2>
+            <div className="grid sm:grid-cols-2 gap-2">{activityByType.map(([type, totals]) => <div key={type} className="rounded-xl bg-warm-gray-50 p-3 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-warm-gray-800">{ACTIVITY_TYPE_LABELS[type] ?? type}</p><p className="text-xs text-warm-gray-500">{totals.sessions} sessioni · {totals.calories ? `~${totals.calories} kcal` : 'calorie non disponibili'}</p></div><p className="text-xl font-bold text-sage-700">{totals.minutes}<span className="text-xs font-medium ml-1">min</span></p></div>)}</div>
+          </div>}
           {activityData.length >= 2 && (
             <div className="card">
               <h2 className="font-semibold text-warm-gray-800 mb-4">Minuti di attività</h2>
@@ -502,7 +539,7 @@ export function ProgressiPage() {
                 }))} margin={{ left: -10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
-                  <YAxis domain={[1, 5]} tick={{ fontSize: 10, fill: '#8d877a' }} />
+                  <YAxis domain={moodDomain} tick={{ fontSize: 10, fill: '#8d877a' }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="umore" name="Umore" stroke="#e07b7b" strokeWidth={2} dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="energia" name="Energia" stroke="#d4a853" strokeWidth={2} dot={{ r: 2 }} />
@@ -567,7 +604,7 @@ export function ProgressiPage() {
                 <LineChart data={mealSensationData} margin={{ left: -18, right: 8, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#8d877a' }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#8d877a' }} />
+                  <YAxis domain={sensationDomain} tick={{ fontSize: 10, fill: '#8d877a' }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="fame" name="Fame prima" stroke="#d95f76" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                   <Line type="monotone" dataKey="sazieta" name="Sazietà dopo" stroke="#236874" strokeWidth={2} dot={{ r: 3 }} connectNulls />

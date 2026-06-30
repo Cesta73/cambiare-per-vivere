@@ -39,7 +39,7 @@ const dateStart = (period: Period) => {
 
 const dateOnlyStart = (period: Period) => dateStart(period).slice(0, 10);
 
-export function RegistroPage() {
+export function RegistroPage({ compact = false }: { compact?: boolean } = {}) {
   const { user, dataVersion, showToast } = useApp();
   const [period, setPeriod] = useState<Period>('today');
   const [items, setItems] = useState<TimelineItem[]>([]);
@@ -136,8 +136,8 @@ export function RegistroPage() {
     <div className="space-y-4 pb-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="section-title">Registro</h1>
-          <p className="text-sm text-warm-gray-500 mt-1">Tutto ciò che Jarvis salva, nello stesso posto.</p>
+          <h1 className={compact ? 'font-semibold text-warm-gray-800' : 'section-title'}>{compact ? 'Registro Jarvis' : 'Registro'}</h1>
+          {!compact && <p className="text-sm text-warm-gray-500 mt-1">Tutto ciò che Jarvis salva, nello stesso posto.</p>}
         </div>
         <button onClick={() => void loadData()} className="p-3 rounded-xl bg-white border border-warm-gray-100 text-sage-700" aria-label="Aggiorna">
           <RefreshCw size={19} className={loading ? 'animate-spin' : ''} />
