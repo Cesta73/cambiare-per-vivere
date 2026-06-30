@@ -19,7 +19,7 @@ import type {
   WorkShift,
 } from '../lib/supabase';
 
-export type AppTab = 'oggi' | 'registro' | 'settimana' | 'diario' | 'progressi' | 'altro' | 'cammino' | 'dharma';
+export type AppTab = 'oggi' | 'diario' | 'agenda' | 'progressi' | 'altro' | 'raw-data' | 'cammino' | 'dharma';
 
 interface Toast {
   id: string;

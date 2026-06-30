@@ -75,6 +75,11 @@ export interface BodyMeasurement {
   neck_cm: number | null;
   systolic_bp: number | null;
   diastolic_bp: number | null;
+  body_fat_percent: number | null;
+  body_water_percent: number | null;
+  muscle_percent: number | null;
+  bone_mass_kg: number | null;
+  basal_metabolism_kcal: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -215,7 +220,7 @@ export interface ActivityEntry {
   id: string;
   user_id: string;
   activity_date: string;
-  activity_type: 'walking' | 'aerobic' | 'strength' | 'mobility' | 'daily' | 'other';
+  activity_type: 'walking' | 'aerobic' | 'strength' | 'mobility' | 'yoga' | 'daily' | 'other';
   activity_name: string | null;
   duration_minutes: number;
   perceived_effort: number | null;
@@ -262,6 +267,7 @@ export interface MedicationReminder {
   is_active: boolean;
   notes: string | null;
   professional_note: string | null;
+  dosage_text: string | null;
   created_at: string;
   updated_at: string;
 }

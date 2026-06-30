@@ -1,37 +1,26 @@
 import { useState } from 'react';
 import {
-  ShoppingCart, Pill, CalendarClock, User, FileText, ChevronRight,
-  Leaf, Info, Wind
+  ShoppingCart, Pill, User, FileText, ChevronRight,
+  Leaf, Info, Database
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { ShoppingPage } from './ShoppingPage';
 import { MedicationsPage } from './MedicationsPage';
-import { AppointmentsPage } from './AppointmentsPage';
 import { ProfilePage } from './ProfilePage';
 import { ReportPage } from './ReportPage';
-import { RitrovaIlCentroPage } from '../centro/RitrovaIlCentroPage';
 
-type AltroSection = null | 'shopping' | 'medications' | 'appointments' | 'profile' | 'report' | 'centro';
+type AltroSection = null | 'shopping' | 'medications' | 'profile' | 'report';
 
 export function AltroPage() {
-  const { profile, isDemo, signOut } = useApp();
+  const { profile, isDemo, signOut, setActiveTab } = useApp();
   const [section, setSection] = useState<AltroSection>(null);
 
   if (section === 'shopping') return <ShoppingPage onBack={() => setSection(null)} />;
   if (section === 'medications') return <MedicationsPage onBack={() => setSection(null)} />;
-  if (section === 'appointments') return <AppointmentsPage onBack={() => setSection(null)} />;
   if (section === 'profile') return <ProfilePage onBack={() => setSection(null)} />;
   if (section === 'report') return <ReportPage onBack={() => setSection(null)} />;
-  if (section === 'centro') return <RitrovaIlCentroPage onBack={() => setSection(null)} />;
 
   const menuItems = [
-    {
-      id: 'centro' as const,
-      icon: Wind,
-      label: 'Ritrova il Centro',
-      description: 'Pratiche contemplative, studio e riflessioni',
-      color: 'bg-sage-50 text-sage-700',
-    },
     {
       id: 'shopping' as const,
       icon: ShoppingCart,
@@ -45,13 +34,6 @@ export function AltroPage() {
       label: 'Terapie e supplementi',
       description: 'Promemoria e registro assunzioni',
       color: 'bg-blue-50 text-blue-700',
-    },
-    {
-      id: 'appointments' as const,
-      icon: CalendarClock,
-      label: 'Controlli e visite',
-      description: 'Gestisci appuntamenti ed esami',
-      color: 'bg-petrol-50 text-petrol-700',
     },
     {
       id: 'report' as const,
@@ -88,6 +70,10 @@ export function AltroPage() {
       )}
 
       <div className="space-y-2">
+        <button onClick={() => setActiveTab('raw-data')} className="w-full card flex items-center gap-4 hover:bg-warm-gray-50 text-left">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-petrol-50 text-petrol-700"><Database size={22} /></div>
+          <div className="flex-1"><p className="font-semibold text-warm-gray-800">Dati grezzi</p><p className="text-sm text-warm-gray-500 mt-0.5">Registro Jarvis, errori, pasti e pianificazione</p></div><ChevronRight size={18} className="text-warm-gray-300" />
+        </button>
         {menuItems.map(item => (
           <button
             key={item.id}

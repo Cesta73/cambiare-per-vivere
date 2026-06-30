@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Download, Printer, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Download, Printer, CheckSquare, Square, Copy, Apple, Stethoscope, Brain } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import { formatDate, ACTIVITY_TYPE_LABELS, MEAL_TYPE_LABELS } from '../../lib/utils';
@@ -7,6 +7,7 @@ import { formatDate, ACTIVITY_TYPE_LABELS, MEAL_TYPE_LABELS } from '../../lib/ut
 interface Props { onBack: () => void; }
 
 type ReportSection = 'measurements' | 'pressure' | 'activity' | 'sleep' | 'medications' | 'mood' | 'meals';
+type Audience = 'nutritionist' | 'doctor' | 'psychologist';
 
 const escapeHtml = (value: string) => value
   .replace(/&/g, '&amp;')
@@ -28,6 +29,7 @@ export function ReportPage({ onBack }: Props) {
     return d.toISOString().split('T')[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [audience, setAudience] = useState<Audience>('nutritionist');
   const [sections, setSections] = useState<Set<ReportSection>>(new Set(['measurements', 'pressure', 'activity', 'sleep', 'medications', 'mood', 'meals']));
   const [questions, setQuestions] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,19 @@ export function ReportPage({ onBack }: Props) {
     });
   };
 
+  const chooseAudience = (next: Audience) => {
+    setAudience(next);
+    const start = new Date();
+    start.setDate(start.getDate() - (next === 'nutritionist' ? 7 : next === 'psychologist' ? 10 : 30));
+    setDateFrom(start.toISOString().split('T')[0]);
+    setSections(new Set(next === 'nutritionist'
+      ? ['measurements', 'meals']
+      : next === 'doctor'
+        ? ['measurements', 'pressure', 'medications']
+        : ['mood', 'activity']));
+    setReportData(null);
+  };
+
   const generateReport = async () => {
     setLoading(true);
     const data: any = {
@@ -49,6 +64,7 @@ export function ReportPage({ onBack }: Props) {
       period: { from: dateFrom, to: dateTo },
       generated_at: new Date().toISOString(),
       questions: questions || null,
+      audience,
     };
 
     if (isDemo) {
@@ -88,6 +104,16 @@ export function ReportPage({ onBack }: Props) {
         const toTimestamp = `${dateTo}T23:59:59`;
         const { data: mealData } = await supabase.from('hunger_satiety_entries').select('*').eq('user_id', user.id).gte('entry_datetime', fromTimestamp).lte('entry_datetime', toTimestamp).order('entry_datetime');
         data.meals = mealData ?? [];
+        const { data: hydrationData } = await supabase.from('hydration_entries').select('*').eq('user_id', user.id).gte('entry_date', dateFrom).lte('entry_date', dateTo).order('entry_date');
+        data.hydration = hydrationData ?? [];
+      }
+      if (audience === 'psychologist') {
+        const [{ data: journalData }, { data: practiceData }] = await Promise.all([
+          supabase.from('journal_entries').select('*').eq('user_id', user.id).gte('entry_date', dateFrom).lte('entry_date', dateTo).order('entry_date', { ascending: false }).limit(10),
+          supabase.from('contemplative_sessions').select('*').eq('user_id', user.id).gte('started_at', `${dateFrom}T00:00:00`).lte('started_at', `${dateTo}T23:59:59`).eq('completed', true).order('started_at'),
+        ]);
+        data.journal = journalData ?? [];
+        data.practices = practiceData ?? [];
       }
     }
 
@@ -172,6 +198,25 @@ export function ReportPage({ onBack }: Props) {
       lines.push('');
     }
 
+    if (reportData.hydration?.length) {
+      lines.push('IDRATAZIONE');
+      const totals = reportData.hydration.reduce((acc: Record<string, number>, item: any) => ({ ...acc, [item.entry_date]: (acc[item.entry_date] ?? 0) + item.amount_ml }), {});
+      Object.entries(totals).forEach(([date, ml]) => lines.push(`${formatDate(date)}: ${ml} ml`));
+      lines.push('');
+    }
+
+    if (reportData.journal?.length) {
+      lines.push('DIARIO — ULTIMI GIORNI');
+      reportData.journal.forEach((entry: any) => lines.push(`${formatDate(entry.entry_date)}: mattino ${entry.feeling_today ?? '—'}; vittoria ${entry.small_victory ?? '—'}; difficoltà ${entry.main_difficulty ?? '—'}; intenzione ${entry.tomorrow_intention ?? '—'}`));
+      lines.push('');
+    }
+
+    if (reportData.practices?.length) {
+      lines.push('MEDITAZIONE E PRATICHE');
+      reportData.practices.forEach((item: any) => lines.push(`${new Date(item.started_at).toLocaleDateString('it-IT')}: ${item.practice_name}, ${Math.round((item.actual_duration_sec ?? 0) / 60)} min`));
+      lines.push('');
+    }
+
     if (reportData.questions) {
       lines.push('DOMANDE PER I PROFESSIONISTI');
       lines.push(reportData.questions);
@@ -251,6 +296,25 @@ export function ReportPage({ onBack }: Props) {
     showToast('CSV esportato!', 'success');
   };
 
+  const copySummary = async () => {
+    if (!reportData) return;
+    const label = audience === 'nutritionist' ? 'Nutrizionista' : audience === 'doctor' ? 'Medico specialista' : 'Psicologa';
+    const hydration = reportData.hydration?.reduce((sum: number, item: any) => sum + item.amount_ml, 0) ?? 0;
+    const calories = reportData.meals?.reduce((sum: number, item: any) => sum + (item.calories_kcal ?? 0), 0) ?? 0;
+    const text = [
+      `CAMBIARE PER VIVERE — REPORT ${label.toUpperCase()}`,
+      `Periodo: ${formatDate(reportData.period.from)} – ${formatDate(reportData.period.to)}`,
+      reportData.meals ? `Pasti: ${reportData.meals.length}; calorie stimate complessive: ${calories} kcal; acqua: ${hydration} ml` : '',
+      reportData.measurements ? `Misurazioni: ${reportData.measurements.length}` : '',
+      reportData.medicationReminders ? `Terapie previste: ${reportData.medicationReminders.filter((item: any) => item.is_active).map((item: any) => `${item.name}${item.dosage_text ? ` (${item.dosage_text})` : ''}`).join(', ') || '—'}` : '',
+      reportData.mood ? `Check-in emotivi: ${reportData.mood.length}` : '',
+      reportData.journal ? `Voci di diario: ${reportData.journal.length}; pratiche: ${reportData.practices?.length ?? 0}` : '',
+      'Dati auto-riferiti e stime non mediche.',
+    ].filter(Boolean).join('\n');
+    await navigator.clipboard.writeText(text);
+    showToast('Report copiato negli appunti.', 'success');
+  };
+
   const SECTION_OPTIONS: { id: ReportSection; label: string }[] = [
     { id: 'measurements', label: 'Peso e circonferenze' },
     { id: 'pressure', label: 'Pressione arteriosa' },
@@ -272,6 +336,14 @@ export function ReportPage({ onBack }: Props) {
 
       <div className="card bg-petrol-50 border-petrol-200">
         <p className="text-sm text-petrol-700">Genera un report dei tuoi dati da condividere col tuo team sanitario. Scegli tu cosa includere.</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          { id: 'nutritionist', label: 'Nutrizionista', Icon: Apple },
+          { id: 'doctor', label: 'Medico', Icon: Stethoscope },
+          { id: 'psychologist', label: 'Psicologa', Icon: Brain },
+        ] as const).map(item => <button key={item.id} onClick={() => chooseAudience(item.id)} className={`rounded-2xl border p-3 text-center ${audience === item.id ? 'bg-petrol-900 text-white border-petrol-900' : 'bg-white text-warm-gray-600 border-warm-gray-100'}`}><item.Icon size={20} className="mx-auto mb-1" /><span className="text-[11px] font-semibold">{item.label}</span></button>)}
       </div>
 
       {/* Date range */}
@@ -353,6 +425,9 @@ export function ReportPage({ onBack }: Props) {
           </p>
 
           <div className="flex gap-3">
+            <button onClick={copySummary} className="btn-secondary flex-1 flex items-center justify-center gap-1 text-sm">
+              <Copy size={16} /> Copia
+            </button>
             <button onClick={printReport} className="btn-secondary flex-1 flex items-center justify-center gap-1 text-sm">
               <Printer size={16} /> Stampa
             </button>

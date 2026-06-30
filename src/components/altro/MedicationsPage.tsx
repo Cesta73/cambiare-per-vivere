@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Check, X, AlertCircle, Pill, Power } from 'lucide-react';
+import { ArrowLeft, Plus, Check, X, AlertCircle, Pill, Power, Edit3 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { MedicationReminder, MedicationLog } from '../../lib/supabase';
@@ -31,7 +31,9 @@ export function MedicationsPage({ onBack }: Props) {
   const [todayLogs, setTodayLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
-  const [form, setForm] = useState({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
+  const [editing, setEditing] = useState<MedicationReminder | null>(null);
+  const [unlinkedNames, setUnlinkedNames] = useState<string[]>([]);
+  const [form, setForm] = useState({ name: '', category: 'supplement', dosage_text: '', frequency: 'daily', scheduled_time: '08:00', scheduled_days: '', notes: '', is_active: true });
 
   const today = todayISO();
 
@@ -45,12 +47,16 @@ export function MedicationsPage({ onBack }: Props) {
       setReminders(demoData.medications);
       setTodayLogs([]);
     } else if (user) {
-      const [remRes, logsRes] = await Promise.all([
-        supabase.from('medication_reminders').select('*').eq('user_id', user.id).eq('is_active', true).order('created_at'),
+      const recent = new Date(); recent.setDate(recent.getDate() - 90);
+      const [remRes, logsRes, recentLogsRes] = await Promise.all([
+        supabase.from('medication_reminders').select('*').eq('user_id', user.id).order('is_active', { ascending: false }).order('created_at'),
         supabase.from('medication_logs').select('*').eq('user_id', user.id).eq('log_date', today),
+        supabase.from('medication_logs').select('reminder_id,reminder_name').eq('user_id', user.id).gte('log_date', recent.toISOString().split('T')[0]),
       ]);
       setReminders((remRes.data ?? []).filter(reminder => reminder.category !== 'cpap'));
       setTodayLogs(logsRes.data ?? []);
+      const knownIds = new Set((remRes.data ?? []).map(item => item.id));
+      setUnlinkedNames([...new Set((recentLogsRes.data ?? []).filter(log => !log.reminder_id || !knownIds.has(log.reminder_id)).map(log => log.reminder_name))]);
     }
     setLoading(false);
   };
@@ -93,7 +99,7 @@ export function MedicationsPage({ onBack }: Props) {
     showToast(taken ? 'Segnato come assunto' : 'Segnato come non assunto', 'success');
   };
 
-  const addReminder = async () => {
+  const saveReminder = async () => {
     if (!form.name.trim()) return;
     if (isDemo) {
       setReminders(prev => [...prev, {
@@ -102,31 +108,38 @@ export function MedicationsPage({ onBack }: Props) {
         name: form.name,
         category: form.category as MedicationReminder['category'],
         frequency: form.frequency as MedicationReminder['frequency'],
-        scheduled_days: null,
-        scheduled_time: null,
-        is_active: true,
+        scheduled_days: form.scheduled_days ? form.scheduled_days.split(',').map(day => day.trim()).filter(Boolean) : null,
+        scheduled_time: form.scheduled_time || null,
+        is_active: form.is_active,
         notes: form.notes || null,
         professional_note: 'Segui esclusivamente la prescrizione del professionista sanitario. Non modificare dose o frequenza tramite questa applicazione.',
+        dosage_text: form.dosage_text || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }]);
       setAddModal(false);
-      setForm({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
+      setForm({ name: '', category: 'supplement', dosage_text: '', frequency: 'daily', scheduled_time: '08:00', scheduled_days: '', notes: '', is_active: true });
       return;
     }
     if (!user) return;
-    const { data } = await supabase.from('medication_reminders').insert({
+    const payload = {
       user_id: user.id,
       name: form.name,
       category: form.category as MedicationReminder['category'],
+      dosage_text: form.dosage_text || null,
       frequency: form.frequency as MedicationReminder['frequency'],
       scheduled_time: form.scheduled_time || null,
+      scheduled_days: form.scheduled_days ? form.scheduled_days.split(',').map(day => day.trim()).filter(Boolean) : null,
       notes: form.notes || null,
-      is_active: true,
-    }).select().maybeSingle();
+      is_active: form.is_active,
+    };
+    const query = editing
+      ? supabase.from('medication_reminders').update(payload).eq('id', editing.id)
+      : supabase.from('medication_reminders').insert(payload);
+    const { data } = await query.select().maybeSingle();
     if (data) {
-      setReminders(prev => [...prev, data]);
-      if (form.scheduled_time && form.frequency === 'daily') {
+      setReminders(prev => editing ? prev.map(item => item.id === data.id ? data : item) : [...prev, data]);
+      if (!editing && form.scheduled_time && form.frequency === 'daily') {
         const remindAt = new Date(`${today}T${form.scheduled_time}:00`);
         if (remindAt.getTime() < Date.now()) remindAt.setDate(remindAt.getDate() + 1);
         await supabase.from('reminders').insert({
@@ -140,8 +153,30 @@ export function MedicationsPage({ onBack }: Props) {
       }
     }
     setAddModal(false);
-    setForm({ name: '', category: 'supplement', frequency: 'daily', scheduled_time: '08:00', notes: '' });
-    showToast('Promemoria aggiunto!', 'success');
+    setEditing(null);
+    setForm({ name: '', category: 'supplement', dosage_text: '', frequency: 'daily', scheduled_time: '08:00', scheduled_days: '', notes: '', is_active: true });
+    showToast(editing ? 'Terapia aggiornata.' : 'Promemoria aggiunto!', 'success');
+  };
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ name: '', category: 'medication', dosage_text: '', frequency: 'daily', scheduled_time: '08:00', scheduled_days: '', notes: '', is_active: true });
+    setAddModal(true);
+  };
+
+  const openEdit = (reminder: MedicationReminder) => {
+    setEditing(reminder);
+    setForm({
+      name: reminder.name,
+      category: reminder.category,
+      dosage_text: reminder.dosage_text || '',
+      frequency: reminder.frequency,
+      scheduled_time: reminder.scheduled_time?.slice(0, 5) || '',
+      scheduled_days: reminder.scheduled_days?.join(', ') || '',
+      notes: reminder.notes || '',
+      is_active: reminder.is_active,
+    });
+    setAddModal(true);
   };
 
   const deactivateReminder = async (reminder: MedicationReminder) => {
@@ -176,7 +211,7 @@ export function MedicationsPage({ onBack }: Props) {
           <ArrowLeft size={20} className="text-warm-gray-700" />
         </button>
         <h1 className="section-title flex-1">Terapie e supplementi</h1>
-        <button onClick={() => setAddModal(true)} className="btn-primary py-2 px-3 text-sm">
+        <button onClick={openNew} className="btn-primary py-2 px-3 text-sm">
           <Plus size={16} />
         </button>
       </div>
@@ -206,37 +241,40 @@ export function MedicationsPage({ onBack }: Props) {
                 other: 'bg-warm-gray-100 text-warm-gray-700',
               };
               return (
-                <div key={rem.id} className={`flex items-center gap-3 p-3 rounded-xl ${log?.taken ? 'bg-sage-50 border border-sage-200' : 'bg-warm-gray-50'}`}>
+                <div key={rem.id} className={`flex items-center gap-3 p-3 rounded-xl ${!rem.is_active ? 'opacity-55 bg-warm-gray-50' : log?.taken ? 'bg-sage-50 border border-sage-200' : 'bg-warm-gray-50'}`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${catColors[rem.category] ?? catColors.other}`}>
                     <Pill size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-warm-gray-800 text-sm">{rem.name}</p>
+                    <button onClick={() => openEdit(rem)} className="font-medium text-warm-gray-800 text-sm hover:text-sage-700 text-left inline-flex items-center gap-1">{rem.name}<Edit3 size={12} /></button>
                     <p className="text-xs text-warm-gray-500">{CAT_LABELS[rem.category]} · {FREQ_LABELS[rem.frequency]}</p>
+                    {rem.dosage_text && <p className="text-xs font-medium text-warm-gray-600 mt-1">{rem.dosage_text}</p>}
                     {rem.scheduled_time && <p className="text-xs text-warm-gray-500">Promemoria ore {rem.scheduled_time.slice(0, 5)}</p>}
+                    {rem.notes && <p className="text-xs text-warm-gray-500 mt-1">{rem.notes}</p>}
+                    {!rem.is_active && <p className="text-[10px] uppercase tracking-wide text-warm-gray-400 mt-1">Non attivo</p>}
                   </div>
                   <div className="flex gap-1">
-                    <button
+                    {rem.is_active && <button
                       onClick={() => markTaken(rem, true)}
                       className={`p-2 rounded-xl transition-all ${log?.taken === true ? 'bg-sage-500 text-white' : 'bg-warm-gray-100 text-warm-gray-500 hover:bg-sage-100 hover:text-sage-600'}`}
                       title="Segnato come assunto"
                     >
                       <Check size={16} />
-                    </button>
-                    <button
+                    </button>}
+                    {rem.is_active && <button
                       onClick={() => markTaken(rem, false)}
                       className={`p-2 rounded-xl transition-all ${log?.taken === false ? 'bg-red-400 text-white' : 'bg-warm-gray-100 text-warm-gray-500 hover:bg-red-50 hover:text-red-400'}`}
                       title="Non assunto"
                     >
                       <X size={16} />
-                    </button>
-                    <button
+                    </button>}
+                    {rem.is_active && <button
                       onClick={() => deactivateReminder(rem)}
                       className="p-2 rounded-xl bg-warm-gray-100 text-warm-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-all"
                       title="Disattiva promemoria"
                     >
                       <Power size={16} />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               );
@@ -245,11 +283,17 @@ export function MedicationsPage({ onBack }: Props) {
         )}
       </div>
 
+      {unlinkedNames.length > 0 && <div className="card bg-amber-50 border-amber-200">
+        <h2 className="font-semibold text-amber-900">Assunzioni senza scheda terapia</h2>
+        <p className="text-xs text-amber-800 mt-1">Jarvis ha registrato questi nomi, ma manca una terapia base collegata:</p>
+        <div className="flex flex-wrap gap-2 mt-3">{unlinkedNames.map(name => <button key={name} onClick={() => { setEditing(null); setForm({ name, category: 'medication', dosage_text: '', frequency: 'daily', scheduled_time: '', scheduled_days: '', notes: '', is_active: true }); setAddModal(true); }} className="px-3 py-1.5 rounded-full bg-white text-amber-800 text-xs font-semibold border border-amber-200">+ {name}</button>)}</div>
+      </div>}
+
       {addModal && (
-        <Modal isOpen title="Aggiungi promemoria" onClose={() => setAddModal(false)} size="sm">
+        <Modal isOpen title={editing ? 'Modifica terapia' : 'Aggiungi terapia'} onClose={() => { setAddModal(false); setEditing(null); }} size="sm">
           <div className="space-y-4">
             <div className="card bg-amber-50 border-amber-200 py-2">
-              <p className="text-xs text-amber-700">Inserisci solo il nome del prodotto, senza dosaggi. Segui sempre la prescrizione del tuo professionista.</p>
+              <p className="text-xs text-amber-700">Riporta fedelmente prescrizione e posologia nelle note. L’app non modifica le indicazioni del professionista.</p>
             </div>
             <div>
               <label className="label">Nome</label>
@@ -262,6 +306,10 @@ export function MedicationsPage({ onBack }: Props) {
               </select>
             </div>
             <div>
+              <label className="label">Posologia prescritta</label>
+              <input type="text" className="input-field" placeholder="Es. 1 compressa dopo colazione" value={form.dosage_text} onChange={e => setForm(p => ({ ...p, dosage_text: e.target.value }))} />
+            </div>
+            <div>
               <label className="label">Frequenza</label>
               <select className="input-field" value={form.frequency} onChange={e => setForm(p => ({ ...p, frequency: e.target.value }))}>
                 {Object.entries(FREQ_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -272,10 +320,15 @@ export function MedicationsPage({ onBack }: Props) {
               <input type="time" className="input-field" value={form.scheduled_time} onChange={e => setForm(p => ({ ...p, scheduled_time: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Note (opzionale)</label>
-              <input type="text" className="input-field" placeholder="Es. Secondo prescrizione medica" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+              <label className="label">Giorni (opzionale)</label>
+              <input type="text" className="input-field" placeholder="Es. lunedì, mercoledì, venerdì" value={form.scheduled_days} onChange={e => setForm(p => ({ ...p, scheduled_days: e.target.value }))} />
             </div>
-            <button onClick={addReminder} disabled={!form.name.trim()} className="btn-primary w-full">Aggiungi</button>
+            <div>
+              <label className="label">Note</label>
+              <textarea className="input-field h-20 resize-none" placeholder="Indicazioni aggiuntive del professionista" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+            </div>
+            <label className="flex items-center gap-3 rounded-xl bg-warm-gray-50 p-3 text-sm text-warm-gray-700"><input type="checkbox" checked={form.is_active} onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))} /> Terapia attiva</label>
+            <button onClick={saveReminder} disabled={!form.name.trim()} className="btn-primary w-full">{editing ? 'Salva modifiche' : 'Aggiungi'}</button>
           </div>
         </Modal>
       )}

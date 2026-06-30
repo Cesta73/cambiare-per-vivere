@@ -25,7 +25,7 @@ export function QuickActivityModal({ onClose }: Props) {
 
   const estimatedCalories = useMemo(() => {
     if (!weightKg || !duration || parseInt(duration) <= 0) return null;
-    const baseMet: Record<string, number> = { walking: 4, aerobic: 6, strength: 5, mobility: 2.5, daily: 3, other: 4 };
+    const baseMet: Record<string, number> = { walking: 4, aerobic: 6, strength: 5, mobility: 2.5, yoga: 2.8, daily: 3, other: 4 };
     const effortFactor = effort ? 0.7 + parseInt(effort) * 0.06 : 1;
     return Math.round((baseMet[type] ?? 4) * effortFactor * weightKg * (parseInt(duration) / 60));
   }, [duration, effort, type, weightKg]);

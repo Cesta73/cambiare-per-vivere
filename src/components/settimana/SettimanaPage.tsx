@@ -54,7 +54,7 @@ interface MealFormData {
   fiber: string;
 }
 
-export function SettimanaPage() {
+export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   const { user, isDemo, demoData, showToast, dataVersion } = useApp();
   const [weekStart, setWeekStart] = useState(() => getWeekStart());
   const [meals, setMeals] = useState<PlannedMeal[]>([]);
@@ -552,7 +552,7 @@ export function SettimanaPage() {
     <div className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="section-title">Pasti e turni</h1>
+        <h1 className={compact ? 'font-semibold text-warm-gray-800' : 'section-title'}>{compact ? 'Pianificazione tecnica' : 'Pasti e turni'}</h1>
         <div className="flex gap-2">
           <button onClick={() => setModal('recipe')} className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100">Crea ricetta</button>
           <button onClick={copyPrevWeek} className="text-xs text-sage-600 font-medium hover:underline">Copia settimana prec.</button>
