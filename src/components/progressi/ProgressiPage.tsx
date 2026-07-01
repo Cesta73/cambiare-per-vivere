@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import type { BodyMeasurement, ActivityEntry, DailyCheckin, HungerSatietyEntry, MedicationLog } from '../../lib/supabase';
 import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
+import { ageOnDate, DEFAULT_SEDENTARY_PAL, estimateRestingEnergy } from '../../lib/energy';
 
 type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
 
@@ -118,11 +119,10 @@ export function ProgressiPage() {
   const calorieTarget = profile?.daily_calorie_target ?? 2200;
   const measuredBmr = [...measurements].reverse().find(item => item.basal_metabolism_kcal)?.basal_metabolism_kcal ?? null;
   const currentWeight = latestWeightMeas?.weight_kg ?? profile?.start_weight ?? null;
-  const currentAge = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
-  const calculatedBmr = currentWeight && profile?.height_cm && currentAge
-    ? Math.round(10 * currentWeight + 6.25 * profile.height_cm - 5 * currentAge + 5)
-    : Math.round(calorieTarget * 0.72);
+  const currentAge = ageOnDate(profile?.birth_date, profile?.birth_year);
+  const calculatedBmr = estimateRestingEnergy(currentWeight, profile?.height_cm ?? null, currentAge, profile?.biological_sex ?? null);
   const basalMetabolism = measuredBmr ?? calculatedBmr;
+  const baselineExpenditure = basalMetabolism ? Math.round(basalMetabolism * DEFAULT_SEDENTARY_PAL) : null;
   const calorieByDay = new Map<string, { eaten: number; burned: number }>();
   meals.forEach(meal => {
     const date = dateToISO(new Date(meal.entry_datetime));
@@ -140,8 +140,9 @@ export function ProgressiPage() {
     date.setDate(date.getDate() - (13 - index));
     const key = dateToISO(date);
     const values = calorieByDay.get(key) ?? { eaten: 0, burned: 0 };
-    const consumed = basalMetabolism + values.burned;
-    return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, attivita: values.burned, consumate: consumed, bilancio: values.eaten - consumed };
+    const consumed = baselineExpenditure ? baselineExpenditure + values.burned : 0;
+    const balance = values.eaten > 0 && consumed > 0 ? values.eaten - consumed : null;
+    return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, rimanenti: Math.max(0, calorieTarget - values.eaten), attivita: values.burned, consumate: consumed, bilancio: balance };
   });
   const calorieWeeklyMap = calorieDailyData.reduce<Record<string, { obiettivo: number; mangiate: number; attivita: number; consumate: number; bilancio: number }>>((acc, day) => {
     const parts = day.label.split('/');
@@ -152,10 +153,15 @@ export function ProgressiPage() {
     acc[key].mangiate += day.mangiate;
     acc[key].attivita += day.attivita;
     acc[key].consumate += day.consumate;
-    acc[key].bilancio += day.bilancio;
+    acc[key].bilancio += day.bilancio ?? 0;
     return acc;
   }, {});
-  const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({ date: formatDateShort(date), ...values }));
+  const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({
+    date: formatDateShort(date),
+    label: `Settimana del ${formatDate(date)}`,
+    ...values,
+    rimanenti: Math.max(0, values.obiettivo - values.mangiate),
+  }));
   const calorieChartData = caloriePeriod === 'days' ? calorieDailyData : calorieWeeklyData;
   const todayCalories = calorieDailyData[calorieDailyData.length - 1];
   const todayKey = dateToISO(new Date());
@@ -421,12 +427,17 @@ export function ProgressiPage() {
               <Flame size={20} className="text-amber-600" />
               <h2 className="font-semibold text-warm-gray-800">Bilancio indicativo di oggi</h2>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div><p className="text-xs text-warm-gray-500">Obiettivo</p><p className="font-bold text-petrol-700">{todayCalories.obiettivo}</p></div>
-              <div><p className="text-xs text-warm-gray-500">Mangiate</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
-              <div><p className="text-xs text-warm-gray-500">Consumate</p><p className="font-bold text-sage-700">{todayCalories.consumate}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Assunte</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Rimanenti al target</p><p className="font-bold text-amber-700">{todayCalories.rimanenti}</p></div>
+              <div><p className="text-xs text-warm-gray-500">Consumate stimate</p><p className="font-bold text-sage-700">{todayCalories.consumate || '—'}</p></div>
             </div>
-              <p className="text-xs text-warm-gray-500 mt-3">Metabolismo basale: {basalMetabolism} kcal ({measuredBmr ? 'misurato' : 'stimato'}). Stime non mediche.</p>
+            <div className="mt-3 rounded-xl bg-white/70 p-3 flex items-center justify-between gap-3">
+              <span className="text-xs text-warm-gray-600">Deficit/surplus stimato finora</span>
+              <strong className={todayCalories.bilancio === null ? 'text-warm-gray-500' : todayCalories.bilancio <= 0 ? 'text-sage-700' : 'text-rose-600'}>{todayCalories.bilancio === null ? 'dati alimentari insufficienti' : `${todayCalories.bilancio > 0 ? '+' : ''}${todayCalories.bilancio} kcal`}</strong>
+            </div>
+            <p className="text-xs text-warm-gray-500 mt-3">Basale: {basalMetabolism ?? '—'} kcal ({measuredBmr ? 'misurato' : 'Mifflin–St Jeor'}). Base quotidiana: {baselineExpenditure ?? '—'} kcal con PAL {DEFAULT_SEDENTARY_PAL}; attività nette aggiunte separatamente. Stime non mediche.</p>
           </div>
           <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
             <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
@@ -457,9 +468,9 @@ export function ProgressiPage() {
             <div className="grid grid-cols-3 gap-2 mt-3 text-center">
               <div className="rounded-xl bg-amber-50 p-2"><p className="text-[10px] text-warm-gray-500">Assunte</p><p className="font-bold text-amber-700">{todayCalories.mangiate}</p></div>
               <div className="rounded-xl bg-petrol-50 p-2"><p className="text-[10px] text-warm-gray-500">Consumate</p><p className="font-bold text-petrol-700">{todayCalories.consumate}</p></div>
-              <div className={`rounded-xl p-2 ${todayCalories.bilancio <= 0 ? 'bg-sage-50' : 'bg-rose-50'}`}><p className="text-[10px] text-warm-gray-500">Bilancio</p><p className="font-bold text-warm-gray-800">{todayCalories.bilancio > 0 ? '+' : ''}{todayCalories.bilancio}</p></div>
+              <div className={`rounded-xl p-2 ${todayCalories.bilancio !== null && todayCalories.bilancio <= 0 ? 'bg-sage-50' : 'bg-rose-50'}`}><p className="text-[10px] text-warm-gray-500">Bilancio</p><p className="font-bold text-warm-gray-800">{todayCalories.bilancio === null ? '—' : `${todayCalories.bilancio > 0 ? '+' : ''}${todayCalories.bilancio}`}</p></div>
             </div>
-            <p className="text-[11px] text-warm-gray-400 mt-3">Consumate = metabolismo basale + attività registrata. Stime non mediche.</p>
+            <p className="text-[11px] text-warm-gray-400 mt-3">Consumate = basale × PAL sedentario + calorie nette delle attività registrate. Il bilancio resta provvisorio finché la giornata alimentare non è completa.</p>
           </div>
         </div>
       )}
