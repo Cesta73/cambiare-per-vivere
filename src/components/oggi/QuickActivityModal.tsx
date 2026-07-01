@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import { todayISO, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
+import { estimateNetActivityCalories } from '../../lib/energy';
 
 interface Props { onClose: () => void; }
 
@@ -25,9 +26,7 @@ export function QuickActivityModal({ onClose }: Props) {
 
   const estimatedCalories = useMemo(() => {
     if (!weightKg || !duration || parseInt(duration) <= 0) return null;
-    const baseMet: Record<string, number> = { walking: 4, aerobic: 6, strength: 5, mobility: 2.5, yoga: 2.8, daily: 3, other: 4 };
-    const effortFactor = effort ? 0.7 + parseInt(effort) * 0.06 : 1;
-    return Math.round((baseMet[type] ?? 4) * effortFactor * weightKg * (parseInt(duration) / 60));
+    return estimateNetActivityCalories(type, parseInt(duration), weightKg, effort ? parseInt(effort) : null);
   }, [duration, effort, type, weightKg]);
 
   const handleSave = async () => {
@@ -94,8 +93,8 @@ export function QuickActivityModal({ onClose }: Props) {
           <input type="text" className="input-field" placeholder="Es. Lieve fastidio al ginocchio" value={pain} onChange={e => setPain(e.target.value)} />
         </div>
         <div className="bg-sage-50 border border-sage-200 rounded-xl p-3">
-          <p className="text-sm font-semibold text-sage-800">Stima calorie bruciate: {estimatedCalories ?? '—'} kcal</p>
-          <p className="text-xs text-sage-700 mt-1">Stima indicativa basata su peso, durata, tipo di attività e sforzo percepito.</p>
+          <p className="text-sm font-semibold text-sage-800">Stima calorie nette dell’attività: {estimatedCalories ?? '—'} kcal</p>
+          <p className="text-xs text-sage-700 mt-1">Quota oltre il consumo a riposo, stimata da peso, durata, tipo e sforzo; evita il doppio conteggio nel bilancio giornaliero.</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
           Segui le indicazioni ricevute dai tuoi professionisti, soprattutto in presenza di dolori articolari da carico.

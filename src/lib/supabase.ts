@@ -47,6 +47,8 @@ export interface Profile {
   display_name: string | null;
   height_cm: number | null;
   birth_year: number | null;
+  birth_date: string | null;
+  biological_sex: 'male' | 'female' | null;
   goal_description: string | null;
   start_date: string;
   start_weight: number;
