@@ -217,6 +217,29 @@ export function ProgressiPage() {
   const medicationAdherence = medicationTracked ? Math.round(medicationTaken / medicationTracked * 100) : null;
   const trackedMeals = meals.filter(meal => recentDates.includes(dateToISO(new Date(meal.entry_datetime))));
   const trackedMealDays = new Set(trackedMeals.map(meal => dateToISO(new Date(meal.entry_datetime)))).size;
+  const checkinsByDate = new Map(checkins.map(checkin => [checkin.checkin_date, checkin]));
+  const stepsDailyData = recentDates.map(date => {
+    const steps = checkinsByDate.get(date)?.steps ?? null;
+    return {
+      date: formatDateShort(date),
+      label: formatDate(date),
+      passi: steps,
+    };
+  });
+  const stepsValues = stepsDailyData
+    .map(day => day.passi)
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  const todaySteps = checkinsByDate.get(todayKey)?.steps ?? null;
+  const averageSteps = stepsValues.length
+    ? Math.round(stepsValues.reduce((sum, value) => sum + value, 0) / stepsValues.length)
+    : null;
+  const bestStepsDay = stepsDailyData.reduce<{ label: string; passi: number } | null>((best, day) => {
+    if (day.passi === null) return best;
+    if (!best || day.passi > best.passi) return { label: day.label, passi: day.passi };
+    return best;
+  }, null);
+  const formatSteps = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : new Intl.NumberFormat('it-IT').format(value);
 
   const dynamicDomain = (values: Array<number | null | undefined>): [number, number] => {
     const finite = values.filter((value): value is number => Number.isFinite(value));
@@ -477,6 +500,51 @@ export function ProgressiPage() {
 
       {tab === 'attivita' && (
         <div className="space-y-4">
+          <div className="card">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="font-semibold text-warm-gray-800">Passi giornalieri</h2>
+                <p className="text-xs text-warm-gray-500">Dati automatici da Connessione Salute / Google Fit quando sincronizzati.</p>
+              </div>
+              <div className="rounded-2xl bg-sage-50 px-3 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-wide text-warm-gray-500">Oggi</p>
+                <p className="text-xl font-bold text-sage-700">{formatSteps(todaySteps)}</p>
+              </div>
+            </div>
+
+            {stepsValues.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="rounded-xl bg-warm-gray-50 p-3">
+                    <p className="text-xs text-warm-gray-500">Media ultimi giorni</p>
+                    <p className="text-lg font-bold text-petrol-700">{formatSteps(averageSteps)}</p>
+                  </div>
+                  <div className="rounded-xl bg-warm-gray-50 p-3">
+                    <p className="text-xs text-warm-gray-500">Miglior giorno</p>
+                    <p className="text-lg font-bold text-amber-700">{formatSteps(bestStepsDay?.passi)}</p>
+                    {bestStepsDay && <p className="text-[11px] text-warm-gray-500">{bestStepsDay.label}</p>}
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={stepsDailyData} margin={{ left: -5, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
+                    <YAxis tick={{ fontSize: 10, fill: '#8d877a' }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="passi" name="Passi" fill="#236874" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-[11px] text-warm-gray-400 mt-3">
+                  I passi mostrano movimento quotidiano automatico; le attività sotto restano le sessioni registrate a parte.
+                </p>
+              </>
+            ) : (
+              <div className="rounded-xl bg-warm-gray-50 p-4 text-sm text-warm-gray-500">
+                Non vedo ancora passi sincronizzati nello storico. Appena il bridge Health Connect invia dati, comparirà qui l’andamento giornaliero.
+              </div>
+            )}
+          </div>
+
           {activityByType.length > 0 && <div className="card">
             <h2 className="font-semibold text-warm-gray-800 mb-3">Attività per tipo</h2>
             <div className="grid sm:grid-cols-2 gap-2">{activityByType.map(([type, totals]) => <div key={type} className="rounded-xl bg-warm-gray-50 p-3 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-warm-gray-800">{ACTIVITY_TYPE_LABELS[type] ?? type}</p><p className="text-xs text-warm-gray-500">{totals.sessions} sessioni · {totals.calories ? `~${totals.calories} kcal` : 'calorie non disponibili'}</p></div><p className="text-xl font-bold text-sage-700">{totals.minutes}<span className="text-xs font-medium ml-1">min</span></p></div>)}</div>
