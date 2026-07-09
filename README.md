@@ -1,7 +1,13 @@
 # Cambiare per Vivere
 
-Applicazione personale per monitoraggio del benessere, pianificazione, diario,
-Sentiero del Dharma e preparazione al Cammino di Santiago.
+Interfaccia ufficiale di Jarvis 3.0 per monitoraggio del benessere,
+pianificazione, diario, Sentiero del Dharma e preparazione al Cammino di
+Santiago.
+
+Cambiare per Vivere non e un Jarvis separato. Mostra informazioni, raccoglie
+dati, permette modifiche e rende consultabile lo storico condiviso; la logica
+di business complessa e le decisioni devono vivere nel Jarvis Core. Il
+contratto architetturale dell'app e in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Accesso
 
@@ -21,6 +27,11 @@ npm run build
 ```
 
 Le variabili richieste sono `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+Per abilitare l'interfaccia Jarvis 3.0 serve anche `VITE_JARVIS_CORE_URL`, per
+esempio `https://jarvisgc.com`.
+
+La voce `Altro -> Jarvis Core` usa la sessione Supabase corrente per parlare
+con `POST /core/message`; non richiede token segreti nel bundle frontend.
 
 ## Pubblicazione
 

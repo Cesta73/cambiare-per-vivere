@@ -8,19 +8,28 @@ import { ShoppingPage } from './ShoppingPage';
 import { MedicationsPage } from './MedicationsPage';
 import { ProfilePage } from './ProfilePage';
 import { ReportPage } from './ReportPage';
+import { JarvisCorePage } from './JarvisCorePage';
 
-type AltroSection = null | 'shopping' | 'medications' | 'profile' | 'report';
+type AltroSection = null | 'jarvis-core' | 'shopping' | 'medications' | 'profile' | 'report';
 
 export function AltroPage() {
   const { profile, isDemo, signOut, setActiveTab } = useApp();
   const [section, setSection] = useState<AltroSection>(null);
 
+  if (section === 'jarvis-core') return <JarvisCorePage onBack={() => setSection(null)} />;
   if (section === 'shopping') return <ShoppingPage onBack={() => setSection(null)} />;
   if (section === 'medications') return <MedicationsPage onBack={() => setSection(null)} />;
   if (section === 'profile') return <ProfilePage onBack={() => setSection(null)} />;
   if (section === 'report') return <ReportPage onBack={() => setSection(null)} />;
 
   const menuItems = [
+    {
+      id: 'jarvis-core' as const,
+      icon: Leaf,
+      label: 'Jarvis Core',
+      description: 'Conversazione diretta con Jarvis',
+      color: 'bg-petrol-50 text-petrol-700',
+    },
     {
       id: 'shopping' as const,
       icon: ShoppingCart,
