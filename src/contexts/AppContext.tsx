@@ -68,6 +68,8 @@ interface AppContextValue {
   isLoading: boolean;
   activeTab: AppTab;
   setActiveTab: (tab: AppTab) => void;
+  jarvisCoreRequestId: number;
+  openJarvisCore: () => void;
   dataVersion: number;
   refreshData: () => void;
   toasts: Toast[];
@@ -85,6 +87,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AppTab>('oggi');
+  const [jarvisCoreRequestId, setJarvisCoreRequestId] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
 
@@ -194,6 +197,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 3500);
   }, []);
 
+  const openJarvisCore = useCallback(() => {
+    setActiveTab('altro');
+    setJarvisCoreRequestId(current => current + 1);
+  }, []);
+
   return (
     <AppContext.Provider value={{
       user,
@@ -202,6 +210,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       activeTab,
       setActiveTab,
+      jarvisCoreRequestId,
+      openJarvisCore,
       dataVersion,
       refreshData: () => setDataVersion(version => version + 1),
       toasts,

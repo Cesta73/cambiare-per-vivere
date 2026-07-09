@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ShoppingCart, Pill, User, FileText, ChevronRight,
   Leaf, Info, Database
@@ -13,8 +13,12 @@ import { JarvisCorePage } from './JarvisCorePage';
 type AltroSection = null | 'jarvis-core' | 'shopping' | 'medications' | 'profile' | 'report';
 
 export function AltroPage() {
-  const { profile, isDemo, signOut, setActiveTab } = useApp();
+  const { profile, isDemo, signOut, setActiveTab, jarvisCoreRequestId } = useApp();
   const [section, setSection] = useState<AltroSection>(null);
+
+  useEffect(() => {
+    if (jarvisCoreRequestId > 0) setSection('jarvis-core');
+  }, [jarvisCoreRequestId]);
 
   if (section === 'jarvis-core') return <JarvisCorePage onBack={() => setSection(null)} />;
   if (section === 'shopping') return <ShoppingPage onBack={() => setSection(null)} />;

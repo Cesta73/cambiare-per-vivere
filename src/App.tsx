@@ -101,19 +101,24 @@ function DesktopSidebar() {
 }
 
 function DesktopRightRail() {
-  const { setActiveTab } = useApp();
+  const { setActiveTab, openJarvisCore } = useApp();
 
   return (
     <aside className="hidden 2xl:block sticky top-6 h-[calc(100dvh-3rem)] overflow-y-auto space-y-4">
-      <section className="card">
+      <button
+        type="button"
+        onClick={openJarvisCore}
+        className="card w-full text-left hover:border-sage-200 hover:shadow-xl transition-all active:scale-99"
+        aria-label="Apri Jarvis Core"
+      >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles size={18} className="text-amber-600" />
-          <h2 className="font-display text-xl text-petrol-900">Jarvis 2.0</h2>
+          <h2 className="font-display text-xl text-petrol-900">Jarvis 3.0</h2>
         </div>
         <p className="text-sm text-warm-gray-600 leading-relaxed">
-          Qui mettiamo la regia: priorità, segnali da notare e suggerimenti dei sub-Jarvis senza affollare la pagina centrale.
+          Chat diretta con il Core: stessa memoria, stesso contesto, una sola voce.
         </p>
-      </section>
+      </button>
 
       <section className="card bg-gradient-to-br from-white to-sage-50 border-sage-200">
         <div className="flex items-center gap-2 mb-3">
