@@ -5,6 +5,11 @@ const jarvisCoreUrl = import.meta.env.VITE_JARVIS_CORE_URL?.replace(/\/$/, '') |
 export interface JarvisCoreMessageResponse {
   ok: true;
   core: 'jarvis-3.0';
+  release: {
+    id: string;
+    releasedAt: string | null;
+    environment: string;
+  };
   interface: string;
   conversationId: string;
   eventId: string | null;
