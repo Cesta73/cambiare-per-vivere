@@ -1,0 +1,17 @@
+{
+  "name": "Cambiare per Vivere",
+  "short_name": "Jarvis",
+  "description": "Cabina di regia personale collegata a Jarvis 3.0",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101820",
+  "theme_color": "#101820",
+  "icons": [
+    {
+      "src": "/jarvis-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

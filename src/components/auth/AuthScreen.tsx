@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Compass, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { BrandMark } from '../brand/BrandMark';
 
 export function AuthScreen() {
   const { signIn, showToast } = useApp();
@@ -30,9 +31,7 @@ export function AuthScreen() {
     <div className="min-h-screen auth-backdrop flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-7">
-          <div className="brand-seal mx-auto mb-5">
-            <img src="/jarvis-emblem.png" alt="Emblema di Cambiare per Vivere" className="w-full h-full rounded-full" />
-          </div>
+          <BrandMark className="w-24 h-24 text-mineral mx-auto mb-5" title="Cambiare per Vivere" />
           <p className="eyebrow text-amber-300 mb-2">Il tuo spazio di orientamento</p>
           <h1 className="font-display text-4xl text-cream-50 tracking-tight">Cambiare per Vivere</h1>
           <p className="text-sage-200 mt-2 text-sm">Presenza, direzione, passi concreti.</p>

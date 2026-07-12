@@ -4,6 +4,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        mineral: '#5FB7AE',
+        saffron: '#D8A331',
+        'tibetan-red': '#8C2F39',
+        'night-ink': '#101820',
         sage: {
           50: '#f4f8f6',
           100: '#e6f0ec',

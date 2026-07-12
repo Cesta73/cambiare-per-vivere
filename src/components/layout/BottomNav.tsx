@@ -11,11 +11,11 @@ const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
 ];
 
 export function BottomNav() {
-  const { activeTab, setActiveTab } = useApp();
+  const { activeTab, setActiveTab, openJarvisCore } = useApp();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom px-3 pb-2 pointer-events-none lg:hidden">
-      <div className="bottom-dock max-w-lg mx-auto flex justify-around px-1.5 py-1.5 pointer-events-auto">
+      <div className="bottom-dock max-w-lg mx-auto flex items-stretch px-1 py-1 pointer-events-auto">
         {NAV_ITEMS.map(({ tab, label, Icon }) => (
           <button
             key={tab}
@@ -28,6 +28,9 @@ export function BottomNav() {
             <span className="text-[10px] font-semibold tracking-wide">{label}</span>
           </button>
         ))}
+        <button type="button" onClick={openJarvisCore} className="nav-jarvis" aria-label="Parla con Jarvis">
+          <span className="text-base leading-none">J</span>
+        </button>
       </div>
     </nav>
   );
