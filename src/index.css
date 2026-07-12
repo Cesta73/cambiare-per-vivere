@@ -277,21 +277,14 @@
     box-shadow: 0 10px 24px rgba(16, 24, 32, 0.16);
   }
 
-  .nav-jarvis {
-    position: absolute;
-    right: 0.45rem;
-    top: -2.8rem;
-    width: 2.7rem;
-    height: 2.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .nav-item-jarvis {
+    color: #81c7c0;
+  }
+
+  .nav-item-jarvis .nav-icon-frame {
     color: #101820;
-    font-family: 'Marcellus', Georgia, serif;
     background: #5fb7ae;
-    border: 2px solid #101820;
-    border-radius: 50%;
-    box-shadow: 0 8px 18px rgba(16, 24, 32, 0.28);
+    box-shadow: 0 5px 12px rgba(95, 183, 174, 0.22);
   }
 
   .command-page {

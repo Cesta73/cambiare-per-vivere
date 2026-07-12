@@ -1,4 +1,4 @@
-import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp, type AppTab } from '../../contexts/AppContext';
 
@@ -28,8 +28,9 @@ export function BottomNav() {
             <span className="text-[10px] font-semibold tracking-wide">{label}</span>
           </button>
         ))}
-        <button type="button" onClick={openJarvisCore} className="nav-jarvis" aria-label="Parla con Jarvis">
-          <span className="text-base leading-none">J</span>
+        <button type="button" onClick={openJarvisCore} className="nav-item nav-item-jarvis flex-1" aria-label="Parla con Jarvis">
+          <span className="nav-icon-frame"><Sparkles size={20} strokeWidth={1.9} /></span>
+          <span className="text-[10px] font-semibold tracking-wide">Jarvis</span>
         </button>
       </div>
     </nav>
