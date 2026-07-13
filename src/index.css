@@ -752,6 +752,17 @@
   .cammino-goal { background: #2a2520 !important; border-color: rgba(216, 163, 49, 0.44) !important; }
   .cammino-progress { background: #d8a331; }
 
+  .workspace-view:not(.workspace-view-oggi) .operational-list { display: grid; gap: 0; }
+  .workspace-view:not(.workspace-view-oggi) .operational-row {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    background: transparent !important;
+    border-width: 0 0 1px !important;
+    border-color: rgba(95, 183, 174, 0.18) !important;
+    border-radius: 0 !important;
+  }
+  .workspace-view:not(.workspace-view-oggi) .operational-row:last-child { border-bottom-width: 0 !important; }
+
   .workspace-view:not(.workspace-view-oggi) .recharts-cartesian-grid line { stroke: rgba(143, 173, 168, 0.16); }
   .workspace-view:not(.workspace-view-oggi) .recharts-text { fill: #8fada8; }
   .workspace-view:not(.workspace-view-oggi) .recharts-legend-item-text { color: #a9c0bb !important; }

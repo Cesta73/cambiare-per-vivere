@@ -232,7 +232,7 @@ export function MedicationsPage({ onBack }: Props) {
         {reminders.length === 0 ? (
           <p className="text-sm text-warm-gray-400 text-center py-4">Nessun promemoria. Aggiungine uno!</p>
         ) : (
-          <div className="space-y-3">
+          <div className="operational-list">
             {reminders.map(rem => {
               const log = todayLogs.find(l => l.reminder_id === rem.id);
               const catColors: Record<string, string> = {
@@ -241,7 +241,7 @@ export function MedicationsPage({ onBack }: Props) {
                 other: 'bg-warm-gray-100 text-warm-gray-700',
               };
               return (
-                <div key={rem.id} className={`flex items-center gap-3 p-3 rounded-xl ${!rem.is_active ? 'opacity-55 bg-warm-gray-50' : log?.taken ? 'bg-sage-50 border border-sage-200' : 'bg-warm-gray-50'}`}>
+                <div key={rem.id} className={`operational-row flex items-center gap-3 p-3 rounded-xl ${!rem.is_active ? 'opacity-55 bg-warm-gray-50' : log?.taken ? 'bg-sage-50 border border-sage-200' : 'bg-warm-gray-50'}`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${catColors[rem.category] ?? catColors.other}`}>
                     <Pill size={18} />
                   </div>
