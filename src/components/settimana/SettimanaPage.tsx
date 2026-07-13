@@ -65,7 +65,20 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
 
   const weekDays = getWeekDays(weekStart);
   const officialMenuFor = (date: string) => plan?.weekly_menu.days[weekdayKey(date)];
-  const officialSuggestion = officialSuggestionFor(plan, mealForm.date, mealForm.mealType);
+  const localShiftForDay = (date: string) => shifts.find(shift => shift.date === date);
+  const planningShiftForDay = (date: string) => {
+    const local = localShiftForDay(date);
+    if (local) return { type: local.shift_type, label: SHIFT_LABELS[local.shift_type] ?? local.custom_label ?? local.shift_type, local: true };
+    const scheduled = plan?.shift_schedule?.[date];
+    return scheduled ? { type: scheduled.type, label: scheduled.label, local: false } : null;
+  };
+  const operationalSuggestionFor = (date: string, mealType: string) => {
+    const shift = planningShiftForDay(date);
+    return buildOfficialMealSuggestions(plan, [date], [], {
+      shifts: shift ? [{ date, shift_type: shift.type }] : [],
+    }).find(suggestion => suggestion.meal_type === mealType) ?? null;
+  };
+  const officialSuggestion = operationalSuggestionFor(mealForm.date, mealForm.mealType);
 
   useEffect(() => {
     loadData();
@@ -138,13 +151,13 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   };
 
   const openOfficialMeal = (date: string, mealType: string) => {
-    const suggestion = officialSuggestionFor(plan, date, mealType);
+    const suggestion = operationalSuggestionFor(date, mealType);
     if (!suggestion) return;
     setEditMeal(null);
     setMealForm({
-      name: suggestion,
-      ingredients: ingredientsForOfficialMeal(suggestion, mealType),
-      notes: 'Suggerimento flessibile del piano alimentare ufficiale',
+      name: suggestion.name,
+      ingredients: suggestion.ingredients,
+      notes: suggestion.notes,
       mealType,
       date,
       quantityG: '', calories: '', protein: '', carbs: '', fat: '', fiber: '',
@@ -616,7 +629,6 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   );
   const getConsumedMealsForSlot = (date: string, mealType: string) => getConsumedMealsForDay(date)
     .filter(meal => meal.meal_type === mealType);
-  const getShiftForDay = (date: string) => shifts.find(s => s.date === date);
 
   const weekLabel = `${formatDateShort(dateToISO(weekStart))} – ${formatDateShort(dateToISO(weekDays[6]))}`;
 
@@ -730,7 +742,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {weekDays.map(day => {
           const iso = dateToISO(day);
-          const shift = getShiftForDay(iso);
+          const shift = planningShiftForDay(iso);
           const dayMeals = getMealsForDay(iso);
           const dayConsumedMeals = getConsumedMealsForDay(iso);
           const isToday = iso === todayISO();
@@ -751,7 +763,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
                 <span className={`text-xs mt-1 px-1.5 py-0.5 rounded-full ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-sage-100 text-sage-700'
                 }`}>
-                  {shift.shift_type === 'morning' ? 'Mat' : shift.shift_type === 'afternoon' ? 'Pom' : shift.shift_type === 'night' ? 'Not' : shift.shift_type === 'rest' ? 'Rip' : 'Per'}
+                  {shift.type === 'morning' ? 'Mat' : shift.type === 'afternoon' ? 'Pom' : shift.type === 'night' ? 'Not' : shift.type === 'rest' ? 'Rip' : shift.type === 'off_after_night' ? 'Smo' : 'Per'}
                 </span>
               )}
               {(dayMeals.length > 0 || dayConsumedMeals.length > 0) && (
@@ -770,9 +782,9 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
           <div className="flex items-center justify-between px-1">
             <h2 className="font-semibold text-warm-gray-800 capitalize">{getDayNameShort(selectedDay)}, {formatDateShort(selectedDay)}</h2>
             <div className="flex gap-2">
-              <button onClick={() => { setShiftType(getShiftForDay(selectedDay)?.shift_type ?? 'morning'); setModal('add_shift'); }}
+              <button onClick={() => { setShiftType(planningShiftForDay(selectedDay)?.type ?? 'morning'); setModal('add_shift'); }}
                 className="text-xs text-petrol-600 font-medium bg-petrol-50 px-3 py-1.5 rounded-lg hover:bg-petrol-100 transition-colors">
-                {getShiftForDay(selectedDay) ? 'Cambia turno' : 'Aggiungi turno'}
+                {localShiftForDay(selectedDay) ? 'Cambia turno' : 'Personalizza turno'}
               </button>
             </div>
           </div>
@@ -780,6 +792,11 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
           {officialMenuFor(selectedDay) && (
             <div className="card bg-sage-50 border-sage-200">
               <p className="text-xs font-semibold uppercase text-sage-700">Esempio della dietista</p>
+              {planningShiftForDay(selectedDay) && (
+                <p className="text-sm font-semibold text-petrol-800 mt-2">
+                  {planningShiftForDay(selectedDay)?.label} · {plan?.shift_schedule?.[selectedDay]?.rule ?? plan?.shift.rules[planningShiftForDay(selectedDay)?.type ?? '']}
+                </p>
+              )}
               <div className="space-y-1.5 mt-2">
                 {MEAL_TYPES.map(mealType => {
                   const suggestion = officialSuggestionFor(plan, selectedDay, mealType);
@@ -793,6 +810,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
           {MEAL_TYPES.map(mealType => {
             const dayMeals = getMealsForDay(selectedDay).filter(m => m.meal_type === mealType);
             const actualMeals = getConsumedMealsForSlot(selectedDay, mealType);
+            const operationalSuggestion = operationalSuggestionFor(selectedDay, mealType);
             return (
               <div key={mealType} className="card">
                 <div className="flex items-center justify-between mb-2">
@@ -809,10 +827,12 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
                   </div>
                 </div>
                 {dayMeals.length === 0 ? (
-                  officialSuggestionFor(plan, selectedDay, mealType) ? (
+                  actualMeals.length > 0 ? (
+                    <p className="text-xs text-sage-700">Pasto già registrato: nessun nuovo suggerimento da programmare.</p>
+                  ) : operationalSuggestion ? (
                     <button onClick={() => openOfficialMeal(selectedDay, mealType)} className="w-full text-left rounded-lg bg-sage-50 border border-sage-100 p-2">
-                      <span className="block text-xs font-semibold text-sage-700">Suggerito dal piano</span>
-                      <span className="block text-xs text-warm-gray-600 mt-1">{officialSuggestionFor(plan, selectedDay, mealType)}</span>
+                      <span className="block text-xs font-semibold text-sage-700">Suggerito dal piano e dal turno</span>
+                      <span className="block text-xs text-warm-gray-600 mt-1">{operationalSuggestion.name}</span>
                     </button>
                   ) : <p className="text-xs text-warm-gray-300 italic">Nessun pasto pianificato</p>
                 ) : (
@@ -924,9 +944,9 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
             <div>
               <label className="label">Riferimento ufficiale per questo giorno</label>
               {officialSuggestion ? (
-                <button onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: officialSuggestion, ingredients: ingredientsForOfficialMeal(officialSuggestion, p.mealType), quantityG: '', notes: 'Suggerimento flessibile del piano alimentare ufficiale', calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
+                <button onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: officialSuggestion.name, ingredients: officialSuggestion.ingredients || ingredientsForOfficialMeal(officialSuggestion.name, p.mealType), quantityG: '', notes: officialSuggestion.notes, calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
                   className="w-full text-left text-xs bg-sage-50 border border-sage-200 rounded-xl p-3 text-sage-900">
-                  {officialSuggestion}
+                  {officialSuggestion.name}
                 </button>
               ) : <p className="text-xs text-warm-gray-400">Nessun esempio specifico per questo pasto.</p>}
               <p className="text-xs text-warm-gray-400 mt-1">Esempio flessibile: usa soltanto quantità e alternative presenti nel piano.</p>
