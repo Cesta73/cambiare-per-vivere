@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import type { FavoriteMeal } from '../../lib/supabase';
 import { MEAL_TYPE_LABELS } from '../../lib/utils';
 import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
-import { sendJarvisCoreMessage } from '../../lib/jarvis-core';
+import { sendJarvisCoreMessage, type NutritionMenuDay } from '../../lib/jarvis-core';
 
 interface Props { onClose: () => void; }
 
@@ -21,8 +21,8 @@ interface FoodResult {
 }
 
 export function QuickMealModal({ onClose }: Props) {
-  const { user, showToast } = useApp();
-  const { plan, shiftType } = useNutritionPlan();
+  const { user, showToast, refreshData } = useApp();
+  const { plan } = useNutritionPlan();
   const [step, setStep] = useState<'pre' | 'post'>('pre');
   const [mealType, setMealType] = useState(() => suggestedMealType());
   const [preHunger, setPreHunger] = useState<number | null>(null);
@@ -50,8 +50,20 @@ export function QuickMealModal({ onClose }: Props) {
   const [kcalPer100g, setKcalPer100g] = useState<number | null>(null);
   const [macrosPer100g, setMacrosPer100g] = useState({ protein: 0, carbs: 0, fat: 0, fiber: 0 });
   const [jarvisFeedback, setJarvisFeedback] = useState<string | null>(null);
+  const [planCompliance, setPlanCompliance] = useState<'plan' | 'different'>('plan');
+  const [planSelections, setPlanSelections] = useState<Record<string, string>>({});
 
   const planMeal = plan?.meals[mealType];
+  const menuSuggestion = plan?.weekly_menu.today?.[mealType as keyof NutritionMenuDay];
+
+  useEffect(() => {
+    const rows = plan?.meals[mealType]?.rows ?? [];
+    const menu = plan?.weekly_menu.today?.[mealType as keyof NutritionMenuDay] ?? '';
+    setPlanSelections(Object.fromEntries(rows.map(row => [
+      row.category,
+      inferOfficialSelection(row.choose_one, menu, row.category),
+    ])));
+  }, [mealType, plan]);
 
   useEffect(() => {
     if (!user) return;
@@ -173,56 +185,55 @@ export function QuickMealModal({ onClose }: Props) {
   };
 
   const handleSave = async () => {
-    setLoading(true);
     if (!user) {
       showToast('Sessione non disponibile.', 'error');
-      setLoading(false);
       return;
     }
-    const { error } = await supabase.from('hunger_satiety_entries').insert({
-        user_id: user.id,
-        entry_datetime: new Date().toISOString(),
-        meal_type: mealType,
-        pre_hunger: preHunger,
-        pre_emotional_state: preEmotional || null,
-        pre_eating_reason: preReason || null,
-        pre_craving: preCraving || null,
-        post_satiety: postSatiety,
-        post_satisfaction: postSatisfaction,
-        post_ate_calmly: postCalmly,
-        post_stopped_at_right_time: postStopped,
-        post_notes: postNotes || null,
-        meal_name: mealName || null,
-        quantity_g: quantityG ? parseFloat(quantityG) : null,
-        calories_kcal: calories ? parseInt(calories) : null,
-        protein_g: protein ? parseFloat(protein) : null,
-        carbs_g: carbs ? parseFloat(carbs) : null,
-        fat_g: fat ? parseFloat(fat) : null,
-        fiber_g: fiber ? parseFloat(fiber) : null,
-        calories_source: calories ? calorieSource : null,
-        source_product: sourceProduct || null,
-        shift_type: shiftType,
-    });
-    if (error) {
-      showToast(`Pasto non registrato: ${error.message}`, 'error');
-      setLoading(false);
+    if (preHunger === null || postSatiety === null || postSatisfaction === null) {
+      showToast('Completa fame, sazietà e soddisfazione prima di registrare.', 'info');
       return;
     }
-    await rememberMeal();
-    showToast('Pasto registrato. Jarvis lo sta leggendo.', 'success');
+    const officialItems = planMeal?.rows.map(row => planSelections[row.category]).filter(Boolean) ?? [];
+    if (planCompliance === 'plan' && (!planMeal || officialItems.length !== planMeal.rows.length)) {
+      showToast('Scegli un’alternativa del piano per ogni componente del pasto.', 'info');
+      return;
+    }
+    if (planCompliance === 'different' && !mealName.trim()) {
+      showToast('Descrivi ciò che hai mangiato.', 'info');
+      return;
+    }
+
+    setLoading(true);
     try {
+      const registration = planCompliance === 'plan' ? [
+        `Registra ${MEAL_TYPE_LABELS[mealType] || mealType} come pasto conforme al piano ufficiale.`,
+        `Scelte effettive: ${officialItems.join('; ')}.`,
+        menuSuggestion ? `Piatto del menu: ${menuSuggestion}.` : '',
+      ] : [
+        `Registra ${MEAL_TYPE_LABELS[mealType] || mealType} come pasto non conforme al piano ufficiale.`,
+        `Ho mangiato: ${mealName.trim()}.`,
+        quantityG ? `Quantità dichiarata: ${quantityG} g.` : '',
+        calories ? `Calorie dichiarate: ${calories} kcal.` : '',
+        [protein && `proteine ${protein} g`, carbs && `carboidrati ${carbs} g`, fat && `grassi ${fat} g`, fiber && `fibre ${fiber} g`].filter(Boolean).length
+          ? `Macronutrienti dichiarati: ${[protein && `proteine ${protein} g`, carbs && `carboidrati ${carbs} g`, fat && `grassi ${fat} g`, fiber && `fibre ${fiber} g`].filter(Boolean).join(', ')}.`
+          : '',
+      ];
       const feedback = await sendJarvisCoreMessage([
-        `Confronta con il piano alimentare ufficiale questo ${MEAL_TYPE_LABELS[mealType] || mealType} già registrato nell'app.`,
-        `Pasto: ${mealName.trim() || 'descrizione non indicata'}.`,
-        `Quantità dichiarata: ${quantityG ? `${quantityG} g` : 'non indicata'}.`,
-        `Fame prima: ${preHunger ?? 'non indicata'}/10; sazietà dopo: ${postSatiety ?? 'non indicata'}/10; soddisfazione: ${postSatisfaction ?? 'non indicata'}/10.`,
-        `Mangiato con calma: ${postCalmly === null ? 'non indicato' : postCalmly ? 'sì' : 'no'}; fermato al momento giusto: ${postStopped === null ? 'non indicato' : postStopped ? 'sì' : 'no'}.`,
+        ...registration,
+        `Fame ${preHunger}/10; sazietà ${postSatiety}/10; soddisfazione ${postSatisfaction}/10.`,
+        preEmotional ? `Stato emotivo: ${preEmotional}.` : '',
+        preReason ? `Motivo: ${preReason}.` : '',
+        preCraving ? `Voglia specifica: ${preCraving}.` : '',
+        postCalmly !== null ? `Ho mangiato ${postCalmly ? 'con calma' : 'non con calma'}.` : '',
+        postStopped !== null ? `Mi sono ${postStopped ? 'fermato quando ero sazio' : 'fermato oltre la sazietà'}.` : '',
         postNotes ? `Note: ${postNotes}.` : '',
-        'Dammi una valutazione concreta, una cosa riuscita e al massimo una domanda utile. Non registrare di nuovo il pasto.',
       ].filter(Boolean).join('\n'), `nutrition-app-${todayConversationId()}`);
+      if (planCompliance === 'different' && calories) await rememberMeal();
+      refreshData();
+      showToast('Pasto calcolato e registrato da Jarvis.', 'success');
       setJarvisFeedback(feedback.answer);
-    } catch {
-      setJarvisFeedback('Il pasto è stato salvato correttamente. La valutazione di Jarvis non è disponibile in questo momento; potrai richiederla dalla chat senza registrare di nuovo il pasto.');
+    } catch (cause) {
+      showToast(cause instanceof Error ? cause.message : 'Pasto non registrato.', 'error');
     }
     setLoading(false);
   };
@@ -251,7 +262,21 @@ export function QuickMealModal({ onClose }: Props) {
           </div>
         </div>
 
-        {planMeal?.rows?.length ? (
+        <div>
+          <label className="label">Rispetto al piano</label>
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-warm-gray-100 p-1">
+            <button type="button" onClick={() => setPlanCompliance('plan')}
+              className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors ${planCompliance === 'plan' ? 'bg-white text-sage-800 shadow-sm' : 'text-warm-gray-600'}`}>
+              Conforme
+            </button>
+            <button type="button" onClick={() => setPlanCompliance('different')}
+              className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors ${planCompliance === 'different' ? 'bg-white text-amber-800 shadow-sm' : 'text-warm-gray-600'}`}>
+              Diverso dal piano
+            </button>
+          </div>
+        </div>
+
+        {planCompliance === 'plan' && planMeal?.rows?.length ? (
           <div className="card bg-sage-50 border-sage-200">
             <p className="text-xs font-semibold uppercase text-sage-700">Riferimento del piano</p>
             <p className="text-sm text-warm-gray-700 mt-1">Per questo pasto scegli una voce da ogni riga prevista.</p>
@@ -296,6 +321,30 @@ export function QuickMealModal({ onClose }: Props) {
 
         {step === 'post' && (
           <div className="space-y-4">
+            {planCompliance === 'plan' ? (
+              <div className="bg-sage-50 border border-sage-200 rounded-lg p-3 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-sage-700">Pasto conforme</p>
+                  <p className="text-sm font-semibold text-warm-gray-800 mt-1">
+                    {menuSuggestion || planMeal?.label || 'Pasto previsto dal piano'}
+                  </p>
+                  <p className="text-xs text-warm-gray-500 mt-1">Conferma la scelta effettiva per ogni componente. Jarvis userà queste quantità per il calcolo.</p>
+                </div>
+                {planMeal?.rows.map(row => (
+                  <label key={row.category} className="block">
+                    <span className="label">{planCategoryLabel(row.category)}</span>
+                    <select
+                      className="input-field"
+                      value={planSelections[row.category] || ''}
+                      onChange={event => setPlanSelections(current => ({ ...current, [row.category]: event.target.value }))}
+                    >
+                      <option value="">Scegli l’alternativa usata</option>
+                      {row.choose_one.map(option => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
               <div>
                 <label className="label">Alimento o piatto consumato</label>
@@ -363,6 +412,7 @@ export function QuickMealModal({ onClose }: Props) {
                 </div>
               </div>
             </div>
+            )}
             <ScoreButtons label="Sazietà (0=ancora fame, 10=pieno)" value={postSatiety} onChange={setPostSatiety} min={0} max={10} colorScale />
             <ScoreButtons label="Soddisfazione (0=per nulla, 10=molto)" value={postSatisfaction} onChange={setPostSatisfaction} min={0} max={10} colorScale />
             <div>
@@ -421,4 +471,49 @@ function planCategoryLabel(category: string) {
     grassi: 'Grassi', verdura: 'Verdura', frutta: 'Frutta',
     dolcificante_condimento: 'Condimento',
   } as Record<string, string>)[category] ?? category;
+}
+
+function inferOfficialSelection(options: string[], menu: string, category: string) {
+  if (options.length === 1) return options[0];
+  const value = normalizeFoodText(menu);
+  if (!value) return category === 'grassi' ? options[0] : '';
+
+  const aliases: Array<[RegExp, RegExp]> = [
+    [/\b(branzino|merluzzo|nasello|orata)\b/, /pesce magro/],
+    [/\b(gamber|crostace|mollusch)\b/, /molluschi|crostacei/],
+    [/\b(pollo|tacchino|coniglio)\b/, /pollo|tacchino|coniglio/],
+    [/\b(ceci|fagioli|lenticchie|piselli)\b/, /legumi/],
+    [/\b(fiocchi di latte|ricotta|formaggio fresco)\b/, /formaggio fresco|fiocchi di latte|ricotta/],
+    [/\b(uova|frittata)\b/, /uova/],
+    [/\bpancake\b/, /farina per pancake/],
+  ];
+  for (const [menuPattern, optionPattern] of aliases) {
+    if (!menuPattern.test(value)) continue;
+    const matched = options.filter(option => optionPattern.test(normalizeFoodText(option)));
+    if (matched.length === 1) return matched[0];
+  }
+
+  if (category === 'frutta') {
+    if (/\b(mela|pesca|pera|banana)\b/.test(value)) return options.find(option => /1 frutto grande/.test(normalizeFoodText(option))) || '';
+    if (/\b(albicocc|susin|kiwi)\b/.test(value)) return options.find(option => /medio-piccol/.test(normalizeFoodText(option))) || '';
+    if (/\b(mirtill|fragol|melone|anguria|macedonia)\b/.test(value)) return options.find(option => /bicchiere/.test(normalizeFoodText(option))) || '';
+  }
+
+  const foodKeys = [
+    'farro', 'cornflakes', 'avena', 'fette biscottate', 'wasa', 'gallette', 'cous cous',
+    'pasta', 'riso', 'gnocchi', 'patate', 'grissini', 'crackers', 'kefir', 'latte',
+    'yogurt', 'skyr', 'ricotta', 'fiocchi di latte', 'shake', 'grana', 'miele',
+    'marmellata', 'pesto', 'olive', 'avocado', 'olio',
+  ];
+  const direct = options.filter(option => {
+    const normalizedOption = normalizeFoodText(option);
+    return foodKeys.some(key => value.includes(key) && normalizedOption.includes(key));
+  });
+  if (direct.length === 1) return direct[0];
+  if (category === 'grassi') return direct[0] || options[0];
+  return '';
+}
+
+function normalizeFoodText(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('it');
 }
