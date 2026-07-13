@@ -21,15 +21,19 @@ import {
   MoreHorizontal,
   Moon,
   Route,
+  Salad,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AppTab } from './contexts/AppContext';
 import { BrandMark } from './components/brand/BrandMark';
+import { NutrizionePage } from './components/nutrizione/NutrizionePage';
+import { NutritionPlanProvider } from './contexts/NutritionPlanContext';
 
 const DESKTOP_NAV: { tab: AppTab; label: string; detail: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', detail: 'Bussola quotidiana', Icon: Home },
+  { tab: 'nutrizione', label: 'Nutrizione', detail: 'Piano e scelte quotidiane', Icon: Salad },
   { tab: 'diario', label: 'Diario', detail: 'Riflessioni e continuità', Icon: BookOpen },
   { tab: 'agenda', label: 'Agenda', detail: 'Impegni, turni e terapie', Icon: CalendarDays },
   { tab: 'progressi', label: 'Progressi', detail: 'Andamento e segnali', Icon: TrendingUp },
@@ -189,6 +193,7 @@ function AppContent() {
         <main className="app-main max-w-lg mx-auto px-4 pt-5 pb-28 lg:max-w-none lg:w-full lg:px-0 lg:pt-0 lg:pb-6">
           <div className={`workspace-view workspace-view-${activeTab}`}>
             {activeTab === 'oggi' && <OggiPage />}
+            {activeTab === 'nutrizione' && <NutrizionePage />}
             {activeTab === 'diario' && <DiarioPage />}
             {activeTab === 'agenda' && <AgendaPage />}
             {activeTab === 'raw-data' && <RawDataPage />}
@@ -210,7 +215,9 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <NutritionPlanProvider>
+        <AppContent />
+      </NutritionPlanProvider>
     </AppProvider>
   );
 }

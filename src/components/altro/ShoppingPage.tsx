@@ -5,11 +5,13 @@ import { supabase } from '../../lib/supabase';
 import type { ShoppingList, ShoppingListItem } from '../../lib/supabase';
 import { todayISO, CATEGORY_LABELS, CATEGORY_ORDER, getWeekStart, dateToISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
+import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
 
 interface Props { onBack: () => void; }
 
 export function ShoppingPage({ onBack }: Props) {
   const { user, isDemo, demoData, showToast } = useApp();
+  const { plan } = useNutritionPlan();
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
   const [items, setItems] = useState<ShoppingListItem[]>([]);
@@ -59,8 +61,6 @@ export function ShoppingPage({ onBack }: Props) {
     const { data: meals } = await supabase.from('planned_meals').select('*').eq('user_id', user.id)
       .gte('plan_date', weekStartISO).lte('plan_date', weekEndISO)
       .gte('plan_date', todayISO()).eq('is_completed', false);
-    if (!meals?.length) { showToast('Nessun pasto pianificato per questa settimana.', 'info'); return; }
-
     const { data: currentList } = await supabase.from('shopping_lists').select('*')
       .eq('user_id', user.id).eq('week_start', weekStartISO).eq('is_completed', false)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -78,7 +78,7 @@ export function ShoppingPage({ onBack }: Props) {
     const ingredientSet = new Set<string>((existingItems ?? []).map(item => item.name.trim().toLocaleLowerCase('it')));
     const insertItems: Partial<ShoppingListItem>[] = [];
 
-    meals.forEach(meal => {
+    (meals ?? []).forEach(meal => {
       if (meal.ingredients) {
         meal.ingredients.split(',').map((i: string) => i.trim()).filter(Boolean).forEach((ing: string) => {
           if (!ingredientSet.has(ing.toLowerCase())) {
@@ -93,6 +93,19 @@ export function ShoppingPage({ onBack }: Props) {
           }
         });
       }
+    });
+
+    officialShoppingItems(plan).forEach(item => {
+      const normalized = item.name.toLocaleLowerCase('it');
+      if (ingredientSet.has(normalized)) return;
+      ingredientSet.add(normalized);
+      insertItems.push({
+        user_id: user.id,
+        list_id: newList.id,
+        name: item.name,
+        category: item.category,
+        is_manual: false,
+      });
     });
 
     if (insertItems.length > 0) {
@@ -210,7 +223,7 @@ export function ShoppingPage({ onBack }: Props) {
           <Plus size={16} /> Aggiungi
         </button>
         <button onClick={generateFromWeekPlan} className="btn-secondary py-2 px-4 text-sm flex items-center gap-1 flex-1">
-          <RefreshCw size={16} /> Da menù
+          <RefreshCw size={16} /> Dal piano
         </button>
       </div>
 
@@ -286,4 +299,31 @@ export function ShoppingPage({ onBack }: Props) {
       )}
     </div>
   );
+}
+
+function officialShoppingItems(plan: ReturnType<typeof useNutritionPlan>['plan']) {
+  const categories = plan?.organization?.shopping_categories;
+  if (!categories) return [];
+  const menuText = Object.values(plan.weekly_menu.days)
+    .flatMap(day => Object.values(day))
+    .join(' ')
+    .toLocaleLowerCase('it');
+  const staples = /^(pane|latte parzialmente scremato|yogurt greco bianco|frutta fresca di stagione|verdura fresca di stagione|olio extravergine di oliva)$/;
+  return Object.entries(categories).flatMap(([category, names]) => names
+    .filter(name => staples.test(name) || shoppingTokens(name).some(token => menuText.includes(token)))
+    .map(name => ({ name, category: planCategoryToShopping(category, name) })));
+}
+
+function shoppingTokens(value: string) {
+  const ignored = new Set(['fresco', 'fresca', 'magro', 'magra', 'naturale', 'stagione', 'semplice', 'oppure', 'senza']);
+  return value.toLocaleLowerCase('it').split(/[^a-zà-ù]+/).filter(token => token.length >= 4 && !ignored.has(token));
+}
+
+function planCategoryToShopping(category: string, name: string) {
+  if (category === 'produce') return /frutta/i.test(name) ? 'frutta' : 'verdura';
+  if (category === 'dairy_eggs') return 'latticini';
+  if (['meat', 'fish', 'legumes'].includes(category)) return 'proteine';
+  if (['breakfast_snack_carbs', 'main_meal_carbs'].includes(category)) return 'cereali';
+  if (category === 'fats' || category === 'other') return 'dispensa';
+  return 'altro';
 }

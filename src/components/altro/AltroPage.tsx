@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ShoppingCart, Pill, User, FileText, ChevronRight,
-  Leaf, Info, Database
+  Leaf, Info, Database, Salad
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { ShoppingPage } from './ShoppingPage';
@@ -83,6 +83,10 @@ export function AltroPage() {
       )}
 
       <div className="space-y-2">
+        <button onClick={() => setActiveTab('nutrizione')} className="w-full card flex items-center gap-4 hover:bg-warm-gray-50 text-left">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-sage-50 text-sage-700"><Salad size={22} /></div>
+          <div className="flex-1"><p className="font-semibold text-warm-gray-800">Piano nutrizionale</p><p className="text-sm text-warm-gray-500 mt-0.5">Indicazioni, menù, registrazioni e spesa</p></div><ChevronRight size={18} className="text-warm-gray-300" />
+        </button>
         <button onClick={() => setActiveTab('raw-data')} className="w-full card flex items-center gap-4 hover:bg-warm-gray-50 text-left">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-petrol-50 text-petrol-700"><Database size={22} /></div>
           <div className="flex-1"><p className="font-semibold text-warm-gray-800">Dati grezzi</p><p className="text-sm text-warm-gray-500 mt-0.5">Registro Jarvis, errori, pasti e pianificazione</p></div><ChevronRight size={18} className="text-warm-gray-300" />

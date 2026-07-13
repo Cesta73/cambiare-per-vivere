@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle, BookOpen, CalendarDays, Check, ChevronRight, Database,
   Droplets, Dumbbell, Heart, Pill, Scale, Sparkles, Target, Utensils,
+  Salad,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -157,8 +158,9 @@ export function OggiPage() {
       value: pendingMedications.length ? `${pendingMedications.length} da confermare` : `${dueMedications.length} previste · in ordine`,
       tone: pendingMedications.length ? 'attention' : 'complete', action: () => setActiveTab('agenda'),
     },
-    { id: 'meal', label: 'Pasto', Icon: Utensils, value: mealLabel, action: () => setModal('meal') },
-    { id: 'water', label: 'Acqua', Icon: Droplets, value: `${waterMl} / 2000 ml`, tone: waterMl >= 1500 ? 'complete' : 'normal', action: () => setModal('water') },
+    { id: 'nutrition', label: 'Piano alimentare', Icon: Salad, value: 'Menù, quantità e guida del giorno', action: () => setActiveTab('nutrizione') },
+    { id: 'meal', label: 'Registra pasto', Icon: Utensils, value: mealLabel, action: () => setModal('meal') },
+    { id: 'water', label: 'Acqua', Icon: Droplets, value: `${waterMl} ml · obiettivo 2–2,5 L`, tone: waterMl >= 2000 ? 'complete' : 'normal', action: () => setModal('water') },
     { id: 'movement', label: 'Movimento', Icon: Dumbbell, value: movementMinutes ? `${movementMinutes} minuti registrati` : 'Non ancora registrato', tone: movementMinutes ? 'complete' : 'normal', action: () => setModal('activity') },
     { id: 'journal', label: 'Diario', Icon: BookOpen, value: journal ? 'Aggiornato oggi' : 'Ancora da compilare', tone: journal ? 'complete' : 'normal', action: () => setActiveTab('diario') },
     { id: 'agenda', label: 'Agenda', Icon: CalendarDays, value: nextAppointmentLabel, action: () => setActiveTab('agenda') },

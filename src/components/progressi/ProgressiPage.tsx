@@ -10,11 +10,13 @@ import type { BodyMeasurement, ActivityEntry, DailyCheckin, HungerSatietyEntry, 
 import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 import { ageOnDate, DEFAULT_SEDENTARY_PAL, estimateRestingEnergy } from '../../lib/energy';
+import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
 
-type ProgressTab = 'misure' | 'calorie' | 'attivita' | 'abitudini';
+type ProgressTab = 'misure' | 'nutrizione' | 'attivita' | 'abitudini';
 
 export function ProgressiPage() {
   const { user, isDemo, profile, demoData, showToast, dataVersion } = useApp();
+  const { plan } = useNutritionPlan();
   const [tab, setTab] = useState<ProgressTab>('misure');
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
@@ -217,7 +219,12 @@ export function ProgressiPage() {
   const medicationAdherence = medicationTracked ? Math.round(medicationTaken / medicationTracked * 100) : null;
   const trackedMeals = meals.filter(meal => recentDates.includes(dateToISO(new Date(meal.entry_datetime))));
   const trackedMealDays = new Set(trackedMeals.map(meal => dateToISO(new Date(meal.entry_datetime)))).size;
+  const completeMindfulMeals = trackedMeals.filter(meal => meal.pre_hunger !== null && meal.post_satiety !== null && meal.post_satisfaction !== null);
+  const mindfulCompletion = trackedMeals.length ? Math.round(completeMindfulMeals.length / trackedMeals.length * 100) : null;
+  const satisfactionValues = trackedMeals.map(meal => meal.post_satisfaction).filter((value): value is number => value !== null);
+  const averageSatisfaction = satisfactionValues.length ? (satisfactionValues.reduce((sum, value) => sum + value, 0) / satisfactionValues.length).toFixed(1) : null;
   const checkinsByDate = new Map(checkins.map(checkin => [checkin.checkin_date, checkin]));
+  const hydrationDays = recentDates.filter(date => (checkinsByDate.get(date)?.water_ml ?? 0) >= 2000).length;
   const stepsDailyData = recentDates.map(date => {
     const steps = checkinsByDate.get(date)?.steps ?? null;
     return {
@@ -285,7 +292,7 @@ export function ProgressiPage() {
       <div className="segmented-control flex gap-1 bg-warm-gray-100 rounded-xl p-1">
         {([
           { id: 'misure', label: 'Misure' },
-          { id: 'calorie', label: 'Calorie' },
+          { id: 'nutrizione', label: 'Nutrizione' },
           { id: 'attivita', label: 'Attività' },
           { id: 'abitudini', label: 'Benessere' },
         ] as const).map(t => (
@@ -443,12 +450,23 @@ export function ProgressiPage() {
         </div>
       )}
 
-      {tab === 'calorie' && (
+      {tab === 'nutrizione' && (
         <div className="space-y-4">
+          <div className="card border-sage-200 bg-sage-50">
+            <p className="eyebrow text-sage-700">Piano ufficiale</p>
+            <h2 className="font-semibold text-sage-900 mt-1">Continuità e segnali alimentari</h2>
+            <p className="text-sm text-sage-800 mt-1">Le stime caloriche restano informative. La lettura principale segue il piano, la qualità della registrazione e le sensazioni.</p>
+            {plan && <p className="text-xs text-sage-700 mt-3">Piano attivo dal {formatDate(plan.plan.issued_on)} · {plan.plan.author}</p>}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="card p-3"><p className="text-xs text-warm-gray-500">Pasti completi</p><p className="text-xl font-bold text-sage-700 mt-1">{mindfulCompletion !== null ? `${mindfulCompletion}%` : '—'}</p><p className="text-[11px] text-warm-gray-500 mt-1">fame, sazietà e soddisfazione</p></div>
+            <div className="card p-3"><p className="text-xs text-warm-gray-500">Soddisfazione</p><p className="text-xl font-bold text-amber-700 mt-1">{averageSatisfaction ?? '—'}</p><p className="text-[11px] text-warm-gray-500 mt-1">media su 10</p></div>
+            <div className="card p-3"><p className="text-xs text-warm-gray-500">Idratazione</p><p className="text-xl font-bold text-petrol-700 mt-1">{hydrationDays}/14</p><p className="text-[11px] text-warm-gray-500 mt-1">giorni da almeno 2 L</p></div>
+          </div>
           <div className="card bg-gradient-to-br from-amber-50 to-sage-50 border-amber-200">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={20} className="text-amber-600" />
-              <h2 className="font-semibold text-warm-gray-800">Bilancio indicativo di oggi</h2>
+              <h2 className="font-semibold text-warm-gray-800">Stima energetica secondaria</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div><p className="text-xs text-warm-gray-500">Obiettivo</p><p className="font-bold text-petrol-700">{todayCalories.obiettivo}</p></div>

@@ -1,9 +1,10 @@
-import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal, Sparkles } from 'lucide-react';
+import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal, Salad } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp, type AppTab } from '../../contexts/AppContext';
 
 const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', Icon: Sun },
+  { tab: 'nutrizione', label: 'Piano', Icon: Salad },
   { tab: 'diario', label: 'Diario', Icon: BookOpen },
   { tab: 'agenda', label: 'Agenda', Icon: CalendarDays },
   { tab: 'progressi', label: 'Progressi', Icon: TrendingUp },
@@ -11,7 +12,7 @@ const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
 ];
 
 export function BottomNav() {
-  const { activeTab, setActiveTab, openJarvisCore } = useApp();
+  const { activeTab, setActiveTab } = useApp();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom px-3 pb-2 pointer-events-none lg:hidden">
@@ -28,10 +29,6 @@ export function BottomNav() {
             <span className="text-[10px] font-semibold tracking-wide">{label}</span>
           </button>
         ))}
-        <button type="button" onClick={openJarvisCore} className="nav-item nav-item-jarvis flex-1" aria-label="Parla con Jarvis">
-          <span className="nav-icon-frame"><Sparkles size={20} strokeWidth={1.9} /></span>
-          <span className="text-[10px] font-semibold tracking-wide">Jarvis</span>
-        </button>
       </div>
     </nav>
   );

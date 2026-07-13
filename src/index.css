@@ -854,6 +854,98 @@
   }
 }
 
+.nutrition-plan-status {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  color: #f3efe4;
+  background: #163238;
+  border: 1px solid rgba(95, 183, 174, 0.34);
+  border-left: 4px solid #d8a331;
+  border-radius: 0.5rem;
+}
+
+.nutrition-plan-status h2 {
+  margin-top: 0.35rem;
+  font-family: var(--font-display, ui-serif, Georgia, serif);
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+
+.nutrition-plan-status p:last-child {
+  margin-top: 0.35rem;
+  color: #a9c0bb;
+  font-size: 0.78rem;
+}
+
+.nutrition-plan-status > svg { color: #d8a331; flex: 0 0 auto; }
+
+.nutrition-today-menu > div {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.34fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(143, 173, 168, 0.18);
+}
+
+.nutrition-today-menu > div:last-child { border-bottom: 0; }
+.nutrition-today-menu span { color: #8fada8; font-size: 0.75rem; font-weight: 600; }
+.nutrition-today-menu p { color: inherit; font-size: 0.875rem; line-height: 1.45; overflow-wrap: anywhere; }
+
+.nutrition-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  color: #b9cfca;
+  background: #17282e;
+  border: 1px solid rgba(95, 183, 174, 0.24);
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.nutrition-option-list,
+.nutrition-rule-list { display: grid; gap: 0.5rem; }
+
+.nutrition-option-list li,
+.nutrition-rule-list li {
+  position: relative;
+  padding-left: 1rem;
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.nutrition-option-list li::before,
+.nutrition-rule-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: #5fb7ae;
+  border-radius: 50%;
+}
+
+.nutrition-feedback {
+  padding: 1rem;
+  color: #e6eeeb;
+  background: #163238;
+  border: 1px solid rgba(95, 183, 174, 0.34);
+  border-left: 4px solid #d8a331;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 420px) {
+  .nutrition-today-menu > div { grid-template-columns: 1fr; gap: 0.2rem; }
+}
+
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

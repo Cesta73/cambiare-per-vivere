@@ -114,9 +114,9 @@ export function ProfilePage({ onBack }: Props) {
           <textarea className="input-field h-20 resize-none" value={goalDesc} onChange={e => setGoalDesc(e.target.value)} placeholder="Concordato con i tuoi professionisti..." />
         </div>
         <div>
-          <label className="label">Obiettivo calorico giornaliero</label>
+          <label className="label">Riferimento energetico facoltativo</label>
           <input type="number" className="input-field" min="800" max="6000" step="50" value={calorieTarget} onChange={e => setCalorieTarget(e.target.value)} />
-          <p className="text-xs text-warm-gray-400 mt-1">Valore indicativo concordato: 2200 kcal. Modificalo solo su indicazione del professionista.</p>
+          <p className="text-xs text-warm-gray-400 mt-1">Serve soltanto alle stime dell'app e non modifica il piano alimentare. Aggiornalo solo con un valore indicato da un professionista.</p>
         </div>
       </div>
 

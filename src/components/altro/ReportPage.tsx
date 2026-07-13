@@ -3,6 +3,7 @@ import { ArrowLeft, Download, Printer, CheckSquare, Square, Copy, Apple, Stethos
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import { formatDate, ACTIVITY_TYPE_LABELS, MEAL_TYPE_LABELS } from '../../lib/utils';
+import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
 
 interface Props { onBack: () => void; }
 
@@ -23,6 +24,7 @@ const escapeCsvCell = (value: unknown) => {
 
 export function ReportPage({ onBack }: Props) {
   const { user, isDemo, profile, demoData, showToast } = useApp();
+  const { plan } = useNutritionPlan();
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
@@ -65,6 +67,7 @@ export function ReportPage({ onBack }: Props) {
       generated_at: new Date().toISOString(),
       questions: questions || null,
       audience,
+      nutritionPlan: plan ? { id: plan.plan.id, issued_on: plan.plan.issued_on, author: plan.plan.author } : null,
     };
 
     if (isDemo) {
@@ -130,6 +133,7 @@ export function ReportPage({ onBack }: Props) {
       `Nome: ${reportData.profile?.name ?? '—'}`,
       `Periodo: ${formatDate(reportData.period.from)} – ${formatDate(reportData.period.to)}`,
       `Generato il: ${new Date(reportData.generated_at).toLocaleDateString('it-IT')}`,
+      reportData.nutritionPlan ? `Piano alimentare di riferimento: ${reportData.nutritionPlan.author}, ${formatDate(reportData.nutritionPlan.issued_on)}` : '',
       ``,
       `NOTA: Questi dati sono stati generati dall'applicazione personale "Cambiare per Vivere".`,
       `Sono dati di auto-monitoraggio e non costituiscono documentazione clinica.`,
@@ -300,11 +304,12 @@ export function ReportPage({ onBack }: Props) {
     if (!reportData) return;
     const label = audience === 'nutritionist' ? 'Nutrizionista' : audience === 'doctor' ? 'Medico specialista' : 'Psicologa';
     const hydration = reportData.hydration?.reduce((sum: number, item: any) => sum + item.amount_ml, 0) ?? 0;
-    const calories = reportData.meals?.reduce((sum: number, item: any) => sum + (item.calories_kcal ?? 0), 0) ?? 0;
+    const completeMeals = reportData.meals?.filter((item: any) => item.pre_hunger !== null && item.post_satiety !== null && item.post_satisfaction !== null).length ?? 0;
     const text = [
       `CAMBIARE PER VIVERE — REPORT ${label.toUpperCase()}`,
       `Periodo: ${formatDate(reportData.period.from)} – ${formatDate(reportData.period.to)}`,
-      reportData.meals ? `Pasti: ${reportData.meals.length}; calorie stimate complessive: ${calories} kcal; acqua: ${hydration} ml` : '',
+      reportData.nutritionPlan ? `Piano di riferimento: ${reportData.nutritionPlan.author}, ${formatDate(reportData.nutritionPlan.issued_on)}` : '',
+      reportData.meals ? `Pasti: ${reportData.meals.length}; registrazioni complete: ${completeMeals}; acqua: ${hydration} ml` : '',
       reportData.measurements ? `Misurazioni: ${reportData.measurements.length}` : '',
       reportData.medicationReminders ? `Terapie previste: ${reportData.medicationReminders.filter((item: any) => item.is_active).map((item: any) => `${item.name}${item.dosage_text ? ` (${item.dosage_text})` : ''}`).join(', ') || '—'}` : '',
       reportData.mood ? `Check-in emotivi: ${reportData.mood.length}` : '',

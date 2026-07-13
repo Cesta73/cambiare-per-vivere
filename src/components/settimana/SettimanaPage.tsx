@@ -7,16 +7,10 @@ import { getWeekStart, getWeekDays, dateToISO, formatDateShort, getDayNameShort,
 import { Modal } from '../ui/Modal';
 import { QuickMealModal } from '../oggi/QuickMealModal';
 import { RecipeBuilderModal } from './RecipeBuilderModal';
+import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
 
 const MEAL_TYPES = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
 const SHIFT_TYPES = ['morning', 'afternoon', 'night', 'rest', 'custom'] as const;
-const MEAL_SUGGESTIONS = [
-  { name: 'Pesce, verdure e cereale integrale', ingredients: 'pesce azzurro, verdure di stagione, riso integrale' },
-  { name: 'Legumi e verdure', ingredients: 'legumi, verdure di stagione, pane integrale' },
-  { name: 'Pollo e verdure', ingredients: 'pollo, verdure di stagione, patate' },
-  { name: 'Yogurt e frutta', ingredients: 'yogurt, frutta fresca, avena' },
-];
-
 const guessShoppingCategory = (name: string): string => {
   const normalized = name.toLocaleLowerCase('it');
   if (/mela|pera|banana|arancia|frutta|uva|fragola|kiwi|albicocc/.test(normalized)) return 'frutta';
@@ -56,6 +50,7 @@ interface MealFormData {
 
 export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   const { user, isDemo, demoData, showToast, dataVersion } = useApp();
+  const { plan } = useNutritionPlan();
   const [weekStart, setWeekStart] = useState(() => getWeekStart());
   const [meals, setMeals] = useState<PlannedMeal[]>([]);
   const [shifts, setShifts] = useState<WorkShift[]>([]);
@@ -75,6 +70,8 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   const [macrosPer100g, setMacrosPer100g] = useState({ protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
   const weekDays = getWeekDays(weekStart);
+  const officialMenuFor = (date: string) => plan?.weekly_menu.days[weekdayKey(date)];
+  const officialSuggestion = officialMenuFor(mealForm.date)?.[mealForm.mealType as keyof NonNullable<ReturnType<typeof officialMenuFor>>];
 
   useEffect(() => {
     loadData();
@@ -699,6 +696,15 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
             </div>
           </div>
 
+          {officialMenuFor(selectedDay) && (
+            <div className="card bg-sage-50 border-sage-200">
+              <p className="text-xs font-semibold uppercase text-sage-700">Esempio della dietista</p>
+              <p className="text-sm text-warm-gray-700 mt-2"><strong>Pranzo:</strong> {officialMenuFor(selectedDay)?.lunch}</p>
+              <p className="text-sm text-warm-gray-700 mt-1"><strong>Cena:</strong> {officialMenuFor(selectedDay)?.dinner}</p>
+              <p className="text-xs text-warm-gray-500 mt-2">Flessibile: quantità e alternative restano quelle del piano ufficiale.</p>
+            </div>
+          )}
+
           {MEAL_TYPES.map(mealType => {
             const dayMeals = getMealsForDay(selectedDay).filter(m => m.meal_type === mealType);
             const actualMeals = getConsumedMealsForSlot(selectedDay, mealType);
@@ -825,16 +831,14 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
               </div>
             )}
             <div>
-              <label className="label">Suggerimenti coerenti con il tuo percorso</label>
-              <div className="grid grid-cols-2 gap-2">
-                {MEAL_SUGGESTIONS.map(suggestion => (
-                  <button key={suggestion.name} onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: suggestion.name, ingredients: suggestion.ingredients, calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
-                    className="text-left text-xs bg-amber-50 border border-amber-200 rounded-xl p-2 text-amber-900">
-                    {suggestion.name}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-warm-gray-400 mt-1">Suggerimenti generali dal Second Brain, non prescrizioni nutrizionali.</p>
+              <label className="label">Riferimento ufficiale per questo giorno</label>
+              {officialSuggestion ? (
+                <button onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: officialSuggestion, ingredients: '', notes: 'Esempio flessibile del piano ufficiale', calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
+                  className="w-full text-left text-xs bg-sage-50 border border-sage-200 rounded-xl p-3 text-sage-900">
+                  {officialSuggestion}
+                </button>
+              ) : <p className="text-xs text-warm-gray-400">Nessun esempio specifico per questo pasto.</p>}
+              <p className="text-xs text-warm-gray-400 mt-1">Esempio flessibile: usa soltanto quantità e alternative presenti nel piano.</p>
             </div>
             <div>
               <label className="label">Ingredienti / contenuto (opzionale)</label>
@@ -919,4 +923,9 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
       {modal === 'recipe' && <RecipeBuilderModal onClose={() => setModal(null)} onSaved={loadData} />}
     </div>
   );
+}
+
+function weekdayKey(dateISO: string) {
+  const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return keys[new Date(`${dateISO}T12:00:00`).getDay()];
 }
