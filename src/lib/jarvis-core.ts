@@ -80,13 +80,19 @@ export interface JarvisCoreMessageResponse {
   eventId: string | null;
   answer: string;
   auth: 'core_api_token' | 'supabase_user_session';
+  duplicate?: boolean;
+  processing?: boolean;
 }
 
 export function isJarvisCoreConfigured() {
   return Boolean(jarvisCoreUrl);
 }
 
-export async function sendJarvisCoreMessage(text: string, conversationId: string): Promise<JarvisCoreMessageResponse> {
+export async function sendJarvisCoreMessage(
+  text: string,
+  conversationId: string,
+  messageId?: string,
+): Promise<JarvisCoreMessageResponse> {
   if (!jarvisCoreUrl) {
     throw new Error('Jarvis Core non configurato.');
   }
@@ -109,6 +115,7 @@ export async function sendJarvisCoreMessage(text: string, conversationId: string
       text,
       interface: 'cambiare-per-vivere',
       conversationId,
+      messageId,
       receivedAt: new Date().toISOString(),
     }),
   });

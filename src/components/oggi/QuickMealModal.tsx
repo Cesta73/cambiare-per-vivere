@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { ScoreButtons } from '../ui/ScoreButtons';
 import { useApp } from '../../contexts/AppContext';
@@ -52,6 +52,8 @@ export function QuickMealModal({ onClose }: Props) {
   const [jarvisFeedback, setJarvisFeedback] = useState<string | null>(null);
   const [planCompliance, setPlanCompliance] = useState<'plan' | 'different'>('plan');
   const [planSelections, setPlanSelections] = useState<Record<string, string>>({});
+  const submissionInFlight = useRef(false);
+  const submissionId = useRef(`nutrition-entry-${crypto.randomUUID()}`);
 
   const planMeal = plan?.meals[mealType];
   const menuSuggestion = plan?.weekly_menu.today?.[mealType as keyof NutritionMenuDay];
@@ -185,6 +187,7 @@ export function QuickMealModal({ onClose }: Props) {
   };
 
   const handleSave = async () => {
+    if (submissionInFlight.current) return;
     if (!user) {
       showToast('Sessione non disponibile.', 'error');
       return;
@@ -203,6 +206,7 @@ export function QuickMealModal({ onClose }: Props) {
       return;
     }
 
+    submissionInFlight.current = true;
     setLoading(true);
     try {
       const registration = planCompliance === 'plan' ? [
@@ -227,15 +231,17 @@ export function QuickMealModal({ onClose }: Props) {
         postCalmly !== null ? `Ho mangiato ${postCalmly ? 'con calma' : 'non con calma'}.` : '',
         postStopped !== null ? `Mi sono ${postStopped ? 'fermato quando ero sazio' : 'fermato oltre la sazietà'}.` : '',
         postNotes ? `Note: ${postNotes}.` : '',
-      ].filter(Boolean).join('\n'), `nutrition-app-${todayConversationId()}`);
+      ].filter(Boolean).join('\n'), `nutrition-app-${todayConversationId()}`, submissionId.current);
       if (planCompliance === 'different' && calories) await rememberMeal();
       refreshData();
       showToast('Pasto calcolato e registrato da Jarvis.', 'success');
       setJarvisFeedback(feedback.answer);
     } catch (cause) {
       showToast(cause instanceof Error ? cause.message : 'Pasto non registrato.', 'error');
+    } finally {
+      submissionInFlight.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
