@@ -584,6 +584,17 @@
     border-color: rgba(95, 183, 174, 0.42) !important;
   }
 
+  .workspace-view:not(.workspace-view-oggi) .card .card-sm {
+    padding-right: 0;
+    padding-left: 0;
+    background: transparent !important;
+    border-width: 0 0 1px !important;
+    border-color: rgba(95, 183, 174, 0.18) !important;
+    border-radius: 0 !important;
+  }
+
+  .workspace-view:not(.workspace-view-oggi) .card .card-sm:last-child { border-bottom-width: 0 !important; }
+
   .workspace-view:not(.workspace-view-oggi) .input-field,
   .app-modal .input-field {
     color: #f3efe4 !important;
