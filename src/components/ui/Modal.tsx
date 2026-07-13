@@ -26,15 +26,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex min-h-[100dvh] items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+      className="app-modal fixed inset-0 z-[100] flex min-h-[100dvh] items-end justify-center p-4 sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className={`w-full ${sizeClass} max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-2xl bg-cream-50 shadow-2xl`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-gray-200 sticky top-0 bg-cream-50 z-10 rounded-t-2xl">
-          <h2 className="text-lg font-semibold text-warm-gray-900">{title}</h2>
+      <div className={`app-modal-panel w-full ${sizeClass} max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain`}>
+        <div className="app-modal-header flex items-center justify-between px-5 py-4 sticky top-0 z-10">
+          <h2 className="text-lg font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-warm-gray-100 text-warm-gray-500 transition-colors"
+            className="app-modal-close p-2 transition-colors"
             aria-label="Chiudi"
           >
             <X size={20} />

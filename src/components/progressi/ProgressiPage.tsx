@@ -271,8 +271,8 @@ export function ProgressiPage() {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center justify-between">
-        <h1 className="section-title">Progressi</h1>
+      <div className="page-intro flex items-center justify-between gap-3">
+        <div><p className="eyebrow text-sage-700">Segnali nel tempo</p><h1 className="section-title mt-1">Progressi</h1><p>Osserva tendenze, non singoli numeri.</p></div>
         <button onClick={() => setAddWeightModal(true)} className="btn-primary py-2 px-4 text-sm flex items-center gap-1">
           <Plus size={16} /> Misura
         </button>
@@ -282,7 +282,7 @@ export function ProgressiPage() {
       </button>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-warm-gray-100 rounded-xl p-1">
+      <div className="segmented-control flex gap-1 bg-warm-gray-100 rounded-xl p-1">
         {([
           { id: 'misure', label: 'Misure' },
           { id: 'calorie', label: 'Calorie' },
@@ -462,7 +462,7 @@ export function ProgressiPage() {
             </div>
             <p className="text-xs text-warm-gray-500 mt-3">Basale: {basalMetabolism ?? '—'} kcal ({measuredBmr ? 'misurato' : 'Mifflin–St Jeor'}). Base quotidiana: {baselineExpenditure ?? '—'} kcal con PAL {DEFAULT_SEDENTARY_PAL}; attività nette aggiunte separatamente. Stime non mediche.</p>
           </div>
-          <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
+          <div className="segmented-control grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
             <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
             <button onClick={() => setCaloriePeriod('weeks')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'weeks' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Settimane</button>
           </div>

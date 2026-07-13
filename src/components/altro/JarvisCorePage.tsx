@@ -56,7 +56,7 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-3">
+      <div className="page-intro flex items-center gap-3">
         <button
           onClick={onBack}
           className="w-10 h-10 rounded-xl bg-white border border-warm-gray-200 flex items-center justify-center text-warm-gray-700"

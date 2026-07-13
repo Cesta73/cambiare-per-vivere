@@ -66,8 +66,8 @@ export function AltroPage() {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center justify-between">
-        <h1 className="section-title">Altro</h1>
+      <div className="page-intro flex items-center justify-between gap-3">
+        <div><p className="eyebrow text-sage-700">Strumenti e controllo</p><h1 className="section-title mt-1">Altro</h1><p>Servizi, impostazioni ed esportazioni.</p></div>
         {profile?.display_name && (
           <div className="flex items-center gap-2 text-sage-600 text-sm font-medium">
             <Leaf size={16} />

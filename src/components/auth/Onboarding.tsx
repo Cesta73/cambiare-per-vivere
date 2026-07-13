@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Leaf, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
+import { BrandMark } from '../brand/BrandMark';
 
 const SHIFT_OPTIONS = [
   { value: 'morning', label: 'Mattina' },
@@ -92,14 +93,12 @@ export function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sage-50 to-cream-100 flex flex-col items-center justify-center px-4 py-12">
+    <div className="onboarding-shell min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-sage-600 rounded-2xl mb-4 shadow-lg">
-            <Leaf size={28} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-warm-gray-900">{steps[step].title}</h1>
-          <p className="text-warm-gray-500 mt-1 text-sm">{steps[step].subtitle}</p>
+          <BrandMark className="w-16 h-16 text-mineral mx-auto mb-4" title="Jarvis" />
+          <h1 className="font-display text-2xl text-cream-50">{steps[step].title}</h1>
+          <p className="text-sage-300 mt-1 text-sm">{steps[step].subtitle}</p>
         </div>
 
         {/* Progress */}
@@ -109,7 +108,7 @@ export function Onboarding() {
           ))}
         </div>
 
-        <div className="card space-y-5">
+        <div className="onboarding-panel card space-y-5">
           {step === 0 && (
             <>
               <div>

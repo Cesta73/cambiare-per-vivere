@@ -154,10 +154,14 @@ export function DiarioPage() {
 
   return (
     <div className="space-y-4 pb-4">
-      <h1 className="section-title">Diario</h1>
+      <div className="page-intro">
+        <p className="eyebrow text-sage-700">Presenza e continuità</p>
+        <h1 className="section-title mt-1">Diario</h1>
+        <p>Mattino, sera e motivazioni personali nello stesso percorso.</p>
+      </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-warm-gray-100 rounded-xl p-1">
+      <div className="segmented-control flex gap-1 bg-warm-gray-100 rounded-xl p-1">
         {([
           { id: 'oggi', label: 'Oggi' },
           { id: 'storico', label: 'Storico' },
@@ -172,7 +176,7 @@ export function DiarioPage() {
 
       {tab === 'oggi' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="phase-selector grid grid-cols-2 gap-2">
             <button onClick={() => setPhase('mattino')} className={`rounded-2xl p-4 text-left ${phase === 'mattino' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-white border border-warm-gray-100'}`}>
               <Sunrise size={22} className="text-amber-700 mb-2" />
               <p className="font-semibold text-warm-gray-800">Mattino</p>

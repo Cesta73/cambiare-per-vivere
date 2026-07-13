@@ -141,7 +141,7 @@ export function CamminoPage({ onBack }: Props) {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-3">
+      <div className="page-intro flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-warm-gray-100" aria-label="Torna alla home">
           <ArrowLeft size={20} />
         </button>
@@ -152,7 +152,7 @@ export function CamminoPage({ onBack }: Props) {
         <Route size={26} className="text-amber-700" />
       </div>
 
-      <div className="card bg-gradient-to-br from-amber-700 to-orange-800 text-white border-0">
+      <div className="cammino-goal card text-white border-0">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-amber-100 text-xs font-semibold uppercase tracking-wide">Obiettivo</p>
@@ -187,7 +187,7 @@ export function CamminoPage({ onBack }: Props) {
           <span className="text-sm font-semibold text-amber-700">{xp} punti</span>
         </div>
         <div className="w-full bg-warm-gray-100 rounded-full h-3">
-          <div className="bg-gradient-to-r from-amber-500 to-orange-600 h-3 rounded-full" style={{ width: `${levelProgress}%` }} />
+          <div className="cammino-progress h-3 rounded-full" style={{ width: `${levelProgress}%` }} />
         </div>
         <p className="text-xs text-warm-gray-500 mt-2">I punti premiano costanza e chilometri completati, senza penalità per i giorni saltati.</p>
       </div>

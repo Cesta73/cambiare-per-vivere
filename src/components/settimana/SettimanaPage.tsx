@@ -559,7 +559,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 bg-warm-gray-100 rounded-xl p-1">
+      <div className="segmented-control grid grid-cols-2 gap-2 bg-warm-gray-100 rounded-xl p-1">
         <button onClick={() => setView('plan')} className={`py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${view === 'plan' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
           <CalendarDays size={16} /> Pianifica
         </button>

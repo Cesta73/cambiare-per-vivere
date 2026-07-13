@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarPlus, Check, Clock3, Edit3, MapPin, Pill, RotateCw, Stethoscope, Trash2, Briefcase } from 'lucide-react';
+import { CalendarPlus, Check, ChevronLeft, ChevronRight, Clock3, Edit3, MapPin, Pill, RotateCw, Stethoscope, Trash2, Briefcase } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { Appointment, MedicationReminder, Reminder, WorkShift } from '../../lib/supabase';
@@ -110,18 +110,33 @@ export function AgendaPage() {
   };
 
   const sourceIcon = (source: AgendaItem['source']) => source === 'turno' ? Briefcase : source === 'visita' ? Stethoscope : source === 'terapia' ? Pill : RotateCw;
+  const moveDate = (amount: number) => {
+    const next = new Date(`${date}T12:00:00`);
+    next.setDate(next.getDate() + amount);
+    setDate(next.toISOString().slice(0, 10));
+  };
+  const pendingItems = items.filter(item => !item.done).length;
+  const therapyItems = items.filter(item => item.source === 'terapia').length;
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="page-intro flex items-start justify-between gap-3">
         <div><p className="eyebrow text-sage-700">Tutto in ordine cronologico</p><h1 className="section-title mt-1">Agenda</h1></div>
         <button onClick={openNew} className="btn-primary py-2 px-3"><CalendarPlus size={18} /><span className="hidden sm:inline">Nuovo</span></button>
       </div>
-      <div className="card flex items-center gap-3">
-        <Clock3 size={18} className="text-sage-600" />
+      <div className="page-date-nav">
+        <button type="button" onClick={() => moveDate(-1)} aria-label="Giorno precedente"><ChevronLeft size={18} /></button>
         <input type="date" className="input-field" value={date} onChange={event => setDate(event.target.value)} />
+        <button type="button" onClick={() => setDate(todayISO())} className="page-date-today"><Clock3 size={16} /> Oggi</button>
+        <button type="button" onClick={() => moveDate(1)} aria-label="Giorno successivo"><ChevronRight size={18} /></button>
       </div>
       <p className="text-sm font-semibold text-warm-gray-700 capitalize px-1">{formatDateLong(date)}</p>
+
+      {!loading && <div className="page-stat-grid">
+        <div><strong>{items.length}</strong><span>totali</span></div>
+        <div><strong>{pendingItems}</strong><span>da seguire</span></div>
+        <div><strong>{therapyItems}</strong><span>terapie</span></div>
+      </div>}
 
       {loading ? <div className="card animate-pulse h-32 bg-warm-gray-100" /> : items.length === 0 ? (
         <div className="card text-center py-10"><Clock3 className="mx-auto text-warm-gray-300" size={34} /><p className="font-semibold text-warm-gray-700 mt-3">Nessun impegno</p><p className="text-sm text-warm-gray-500 mt-1">La giornata è libera oppure non è ancora stata sincronizzata.</p></div>

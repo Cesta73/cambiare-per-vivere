@@ -103,7 +103,7 @@ function DesktopRightRail() {
   const { setActiveTab, openJarvisCore } = useApp();
 
   return (
-    <aside className="hidden 2xl:block sticky top-6 h-[calc(100dvh-3rem)] overflow-y-auto space-y-4">
+    <aside className="desktop-right-rail hidden 2xl:block sticky top-6 h-[calc(100dvh-3rem)] overflow-y-auto space-y-4">
       <button
         type="button"
         onClick={openJarvisCore}
@@ -158,8 +158,8 @@ function AppContent() {
     return (
       <div className="min-h-screen app-backdrop flex items-center justify-center">
         <div className="text-center">
-          <img src="/jarvis-emblem.png" alt="" className="w-20 h-20 rounded-full mx-auto mb-4 animate-pulse shadow-2xl" />
-          <p className="text-petrol-800 text-sm font-medium tracking-wide">Sto preparando il tuo spazio...</p>
+          <BrandMark className="w-20 h-20 text-mineral mx-auto mb-4 animate-pulse" title="Jarvis" />
+          <p className="text-sage-200 text-sm font-medium tracking-wide">Sto preparando il tuo spazio...</p>
         </div>
       </div>
     );
@@ -187,14 +187,16 @@ function AppContent() {
       <div className="relative z-10 lg:grid lg:grid-cols-[15rem_minmax(0,52rem)] 2xl:grid-cols-[15rem_minmax(0,52rem)_19rem] lg:justify-center lg:items-start lg:gap-5 lg:px-6 lg:py-6">
         <DesktopSidebar />
         <main className="app-main max-w-lg mx-auto px-4 pt-5 pb-28 lg:max-w-none lg:w-full lg:px-0 lg:pt-0 lg:pb-6">
-          {activeTab === 'oggi' && <OggiPage />}
-          {activeTab === 'diario' && <DiarioPage />}
-          {activeTab === 'agenda' && <AgendaPage />}
-          {activeTab === 'raw-data' && <RawDataPage />}
-          {activeTab === 'progressi' && <ProgressiPage />}
-          {activeTab === 'altro' && <AltroPage />}
-          {activeTab === 'cammino' && <CamminoPage onBack={() => setActiveTab('oggi')} />}
-          {activeTab === 'dharma' && <RitrovaIlCentroPage onBack={() => setActiveTab('oggi')} />}
+          <div className={`workspace-view workspace-view-${activeTab}`}>
+            {activeTab === 'oggi' && <OggiPage />}
+            {activeTab === 'diario' && <DiarioPage />}
+            {activeTab === 'agenda' && <AgendaPage />}
+            {activeTab === 'raw-data' && <RawDataPage />}
+            {activeTab === 'progressi' && <ProgressiPage />}
+            {activeTab === 'altro' && <AltroPage />}
+            {activeTab === 'cammino' && <CamminoPage onBack={() => setActiveTab('oggi')} />}
+            {activeTab === 'dharma' && <RitrovaIlCentroPage onBack={() => setActiveTab('oggi')} />}
+          </div>
         </main>
         <DesktopRightRail />
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, BookOpen, Moon, BarChart2, Sparkles, Zap, Heart } from 'lucide-react';
+import { ArrowLeft, Settings, BookOpen, Moon, BarChart2, Sparkles, Heart, Wind, Sun } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import { PRACTICE_TEMPLATES } from '../../lib/contemplative-data';
@@ -36,11 +37,11 @@ const DEFAULT_PREFS: ContemplativePrefs = {
 
 type CentroSection = 'home' | 'practice' | 'study' | 'moon' | 'reflections';
 
-const QUICK_PRACTICES = [
-  { key: 'emergency1', icon: '🌀', label: '1 min', desc: 'Scarico rapido' },
-  { key: 'emergency2', icon: '❤️', label: '2 min', desc: 'Ritorno al cuore' },
-  { key: 'morningRapid', icon: '⚡', label: 'Mattina', desc: 'Versione veloce' },
-  { key: 'eveningRapid', icon: '🌙', label: 'Sera', desc: 'Versione veloce' },
+const QUICK_PRACTICES: { key: string; Icon: LucideIcon; label: string; desc: string }[] = [
+  { key: 'emergency1', Icon: Wind, label: '1 min', desc: 'Scarico rapido' },
+  { key: 'emergency2', Icon: Heart, label: '2 min', desc: 'Ritorno al cuore' },
+  { key: 'morningRapid', Icon: Sun, label: 'Mattina', desc: 'Versione veloce' },
+  { key: 'eveningRapid', Icon: Moon, label: 'Sera', desc: 'Versione veloce' },
 ];
 
 export function RitrovaIlCentroPage({ onBack }: Props) {
@@ -130,7 +131,7 @@ export function RitrovaIlCentroPage({ onBack }: Props) {
   return (
     <div className="space-y-4 pb-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="page-intro flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors">
           <ArrowLeft size={20} className="text-warm-gray-700" />
         </button>
@@ -167,7 +168,7 @@ export function RitrovaIlCentroPage({ onBack }: Props) {
               onClick={() => startPractice(p.key)}
               className="card text-left hover:bg-sage-50 hover:border-sage-200 transition-all active:scale-98"
             >
-              <div className="text-2xl mb-2">{p.icon}</div>
+              <p.Icon size={22} className="text-mineral mb-2" />
               <p className="font-semibold text-warm-gray-800 text-sm">{p.desc}</p>
               <p className="text-xs text-warm-gray-400 mt-0.5">{p.label}</p>
             </button>

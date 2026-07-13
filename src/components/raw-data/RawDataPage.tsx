@@ -10,7 +10,7 @@ export function RawDataPage() {
 
   return (
     <div className="space-y-4 pb-4">
-      <div>
+      <div className="page-intro">
         <p className="eyebrow text-sage-700">Strumenti di controllo</p>
         <h1 className="section-title mt-1">Dati grezzi</h1>
         <p className="text-sm text-warm-gray-500 mt-2">
@@ -18,7 +18,7 @@ export function RawDataPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
+      <div className="segmented-control grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
         <button onClick={() => setSection('registrazioni')} className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold ${section === 'registrazioni' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
           <Database size={16} /> Registrazioni
         </button>

@@ -134,7 +134,7 @@ export function RegistroPage({ compact = false }: { compact?: boolean } = {}) {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className={`${compact ? '' : 'page-intro'} flex items-start justify-between gap-3`}>
         <div>
           <h1 className={compact ? 'font-semibold text-warm-gray-800' : 'section-title'}>{compact ? 'Registro Jarvis' : 'Registro'}</h1>
           {!compact && <p className="text-sm text-warm-gray-500 mt-1">Tutto ciò che Jarvis salva, nello stesso posto.</p>}
@@ -144,7 +144,7 @@ export function RegistroPage({ compact = false }: { compact?: boolean } = {}) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 bg-warm-gray-100 rounded-xl p-1">
+      <div className="segmented-control grid grid-cols-3 gap-2 bg-warm-gray-100 rounded-xl p-1">
         {([
           ['today', 'Oggi'],
           ['7days', '7 giorni'],

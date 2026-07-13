@@ -327,7 +327,7 @@ export function ReportPage({ onBack }: Props) {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-3">
+      <div className="page-intro flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-warm-gray-100 transition-colors">
           <ArrowLeft size={20} className="text-warm-gray-700" />
         </button>
