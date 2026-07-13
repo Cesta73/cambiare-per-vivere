@@ -3,16 +3,17 @@ import { ArrowLeft, Plus, Check, Trash2, ShoppingCart, RefreshCw, Printer } from
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { ShoppingList, ShoppingListItem } from '../../lib/supabase';
-import { todayISO, CATEGORY_LABELS, CATEGORY_ORDER, getWeekStart, dateToISO } from '../../lib/utils';
+import { todayISO, CATEGORY_LABELS, CATEGORY_ORDER, getWeekStart, getWeekDays, dateToISO } from '../../lib/utils';
 import { Modal } from '../ui/Modal';
 import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
+import { buildOfficialMealSuggestions, resolvedPlanningShifts, shoppingNeedsFromMeals } from '../../lib/nutrition-planning';
 
 interface Props { onBack: () => void; }
 
 export function ShoppingPage({ onBack }: Props) {
   const { user, isDemo, demoData, showToast } = useApp();
   const { plan } = useNutritionPlan();
-  const [lists, setLists] = useState<ShoppingList[]>([]);
+  const [, setLists] = useState<ShoppingList[]>([]);
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,9 +59,33 @@ export function ShoppingPage({ onBack }: Props) {
     weekEnd.setDate(weekEnd.getDate() + 6);
     const weekEndISO = dateToISO(weekEnd);
 
-    const { data: meals } = await supabase.from('planned_meals').select('*').eq('user_id', user.id)
-      .gte('plan_date', weekStartISO).lte('plan_date', weekEndISO)
-      .gte('plan_date', todayISO()).eq('is_completed', false);
+    const endExclusive = new Date(`${weekEndISO}T12:00:00`);
+    endExclusive.setDate(endExclusive.getDate() + 1);
+    const [{ data: meals }, { data: shifts }, { data: consumedMeals }] = await Promise.all([
+      supabase.from('planned_meals').select('*').eq('user_id', user.id)
+        .gte('plan_date', weekStartISO).lte('plan_date', weekEndISO)
+        .gte('plan_date', todayISO()).eq('is_completed', false),
+      supabase.from('work_shifts').select('date,shift_type').eq('user_id', user.id)
+        .gte('date', weekStartISO).lte('date', weekEndISO),
+      supabase.from('hunger_satiety_entries').select('entry_datetime,meal_type').eq('user_id', user.id)
+        .gte('entry_datetime', new Date(`${weekStartISO}T00:00:00`).toISOString())
+        .lt('entry_datetime', endExclusive.toISOString()),
+    ]);
+    const occupiedSlots = (consumedMeals ?? []).filter(meal => meal.meal_type).map(meal => ({
+      plan_date: dateToISO(new Date(meal.entry_datetime)),
+      meal_type: meal.meal_type,
+    }));
+    const suggestions = buildOfficialMealSuggestions(
+      plan,
+      getWeekDays(weekStart).map(dateToISO),
+      [...(meals ?? []), ...occupiedSlots],
+      { fromDate: todayISO(), shifts: resolvedPlanningShifts(plan, getWeekDays(weekStart).map(dateToISO), shifts ?? []) },
+    );
+    const needs = shoppingNeedsFromMeals([...(meals ?? []), ...suggestions]);
+    if (!needs.length) {
+      showToast('Non risultano acquisti per i pasti futuri.', 'info');
+      return;
+    }
     const { data: currentList } = await supabase.from('shopping_lists').select('*')
       .eq('user_id', user.id).eq('week_start', weekStartISO).eq('is_completed', false)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -74,61 +99,41 @@ export function ShoppingPage({ onBack }: Props) {
 
     if (!newList) return;
 
-    const { data: existingItems } = await supabase.from('shopping_list_items').select('name').eq('list_id', newList.id);
-    const ingredientSet = new Set<string>((existingItems ?? []).map(item => item.name.trim().toLocaleLowerCase('it')));
-    const insertItems: Partial<ShoppingListItem>[] = [];
-
-    (meals ?? []).forEach(meal => {
-      if (meal.ingredients) {
-        meal.ingredients.split(',').map((i: string) => i.trim()).filter(Boolean).forEach((ing: string) => {
-          if (!ingredientSet.has(ing.toLowerCase())) {
-            ingredientSet.add(ing.toLowerCase());
-            insertItems.push({
-              user_id: user.id,
-              list_id: newList.id,
-              name: ing,
-              category: guessCategory(ing),
-              is_manual: false,
-            });
-          }
-        });
-      }
+    const { data: existingItems } = await supabase.from('shopping_list_items').select('*').eq('list_id', newList.id);
+    const existingByName = new Map((existingItems ?? []).map(item => [item.name.trim().toLocaleLowerCase('it'), item]));
+    const neededNames = new Set(needs.map(need => need.name.toLocaleLowerCase('it')));
+    const obsolete = (existingItems ?? []).filter(item =>
+      !item.is_manual && !item.is_purchased && !neededNames.has(item.name.trim().toLocaleLowerCase('it')),
+    );
+    if (obsolete.length) await supabase.from('shopping_list_items').delete().in('id', obsolete.map(item => item.id));
+    const updates = needs.filter(need => {
+      const current = existingByName.get(need.name.toLocaleLowerCase('it'));
+      return current && !current.is_manual && (current.quantity !== need.quantity || current.category !== need.category);
     });
-
-    officialShoppingItems(plan).forEach(item => {
-      const normalized = item.name.toLocaleLowerCase('it');
-      if (ingredientSet.has(normalized)) return;
-      ingredientSet.add(normalized);
-      insertItems.push({
+    await Promise.all(updates.map(need => {
+      const current = existingByName.get(need.name.toLocaleLowerCase('it'))!;
+      return supabase.from('shopping_list_items').update({ quantity: need.quantity, category: need.category }).eq('id', current.id);
+    }));
+    const insertItems: Partial<ShoppingListItem>[] = needs
+      .filter(need => !existingByName.has(need.name.toLocaleLowerCase('it')))
+      .map(need => ({
         user_id: user.id,
         list_id: newList.id,
-        name: item.name,
-        category: item.category,
+        name: need.name,
+        category: need.category,
+        quantity: need.quantity,
         is_manual: false,
-      });
-    });
+      }));
 
     if (insertItems.length > 0) {
       await supabase.from('shopping_list_items').insert(insertItems);
     }
 
-    setLists(prev => [newList, ...prev]);
+    setLists(prev => prev.some(list => list.id === newList.id) ? prev : [newList, ...prev]);
     setSelectedList(newList);
     await loadItems(newList.id);
-    showToast(insertItems.length ? `Lista aggiornata con ${insertItems.length} elementi!` : 'La lista è già aggiornata.', 'success');
-  };
-
-  const guessCategory = (name: string): string => {
-    const n = name.toLowerCase();
-    if (/mela|pera|banana|arancia|frutta|uva|fragola|kiwi/.test(n)) return 'frutta';
-    if (/carota|zucchina|melanzana|pomodoro|insalata|verdura|spinaci|broccoli|cipolla|aglio/.test(n)) return 'verdura';
-    if (/pollo|manzo|maiale|pesce|uovo|salmone|tonno|prosciutto|carne/.test(n)) return 'proteine';
-    if (/latte|yogurt|formaggio|burro|panna|ricotta/.test(n)) return 'latticini';
-    if (/pasta|riso|pane|farina|cereali|avena|farro/.test(n)) return 'cereali';
-    if (/surgelat/.test(n)) return 'surgelati';
-    if (/acqua|succo|bevanda|tè|caffè/.test(n)) return 'bevande';
-    if (/olio|aceto|sale|spezie|dispensa/.test(n)) return 'dispensa';
-    return 'altro';
+    const changes = insertItems.length + updates.length + obsolete.length;
+    showToast(changes ? `Lista aggiornata: ${needs.length} alimenti necessari.` : 'La lista è già aggiornata.', 'success');
   };
 
   const toggleItem = async (item: ShoppingListItem) => {
@@ -299,31 +304,4 @@ export function ShoppingPage({ onBack }: Props) {
       )}
     </div>
   );
-}
-
-function officialShoppingItems(plan: ReturnType<typeof useNutritionPlan>['plan']) {
-  const categories = plan?.organization?.shopping_categories;
-  if (!categories) return [];
-  const menuText = Object.values(plan.weekly_menu.days)
-    .flatMap(day => Object.values(day))
-    .join(' ')
-    .toLocaleLowerCase('it');
-  const staples = /^(pane|latte parzialmente scremato|yogurt greco bianco|frutta fresca di stagione|verdura fresca di stagione|olio extravergine di oliva)$/;
-  return Object.entries(categories).flatMap(([category, names]) => names
-    .filter(name => staples.test(name) || shoppingTokens(name).some(token => menuText.includes(token)))
-    .map(name => ({ name, category: planCategoryToShopping(category, name) })));
-}
-
-function shoppingTokens(value: string) {
-  const ignored = new Set(['fresco', 'fresca', 'magro', 'magra', 'naturale', 'stagione', 'semplice', 'oppure', 'senza']);
-  return value.toLocaleLowerCase('it').split(/[^a-zà-ù]+/).filter(token => token.length >= 4 && !ignored.has(token));
-}
-
-function planCategoryToShopping(category: string, name: string) {
-  if (category === 'produce') return /frutta/i.test(name) ? 'frutta' : 'verdura';
-  if (category === 'dairy_eggs') return 'latticini';
-  if (['meat', 'fish', 'legumes'].includes(category)) return 'proteine';
-  if (['breakfast_snack_carbs', 'main_meal_carbs'].includes(category)) return 'cereali';
-  if (category === 'fats' || category === 'other') return 'dispensa';
-  return 'altro';
 }

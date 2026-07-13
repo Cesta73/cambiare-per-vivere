@@ -11,6 +11,7 @@ export interface NutritionMealTemplate {
   label: string;
   rows: NutritionPlanRow[];
   choose_one_once_weekly?: string[];
+  canteen?: string[];
 }
 
 export interface NutritionMenuDay {
@@ -51,6 +52,7 @@ export interface NutritionPlanView {
     rule: string | null;
     rules: Record<string, string>;
   };
+  shift_schedule?: Record<string, { type: string; label: string; rule: string | null }>;
   education: {
     eating_awareness: unknown;
     reflux: unknown;

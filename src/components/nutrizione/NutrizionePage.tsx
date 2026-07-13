@@ -201,8 +201,9 @@ export function NutrizionePage() {
               {Object.entries(plan.weekly_menu.days).map(([day, menu]) => (
                 <div key={day} className="py-3">
                   <p className="font-semibold text-warm-gray-900">{DAY_LABELS[day] ?? day}</p>
-                  <p className="text-sm text-warm-gray-600 mt-1"><strong>Pranzo:</strong> {menu.lunch}</p>
-                  <p className="text-sm text-warm-gray-600 mt-1"><strong>Cena:</strong> {menu.dinner}</p>
+                  {(['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const).map(mealType =>
+                    menu[mealType] ? <p key={mealType} className="text-sm text-warm-gray-600 mt-1"><strong>{MEAL_TYPE_LABELS[mealType]}:</strong> {menu[mealType]}</p> : null,
+                  )}
                 </div>
               ))}
             </div>

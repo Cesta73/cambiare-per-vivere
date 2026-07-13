@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Star, Check, ClipboardCheck, ShoppingCart, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Star, Check, ClipboardCheck, ShoppingCart, CalendarDays, CalendarPlus } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { PlannedMeal, WorkShift, FavoriteMeal, HungerSatietyEntry } from '../../lib/supabase';
@@ -8,22 +8,16 @@ import { Modal } from '../ui/Modal';
 import { QuickMealModal } from '../oggi/QuickMealModal';
 import { RecipeBuilderModal } from './RecipeBuilderModal';
 import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
+import {
+  buildOfficialMealSuggestions,
+  ingredientsForOfficialMeal,
+  officialSuggestionFor,
+  resolvedPlanningShifts,
+  shoppingNeedsFromMeals,
+} from '../../lib/nutrition-planning';
 
 const MEAL_TYPES = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
 const SHIFT_TYPES = ['morning', 'afternoon', 'night', 'rest', 'custom'] as const;
-const guessShoppingCategory = (name: string): string => {
-  const normalized = name.toLocaleLowerCase('it');
-  if (/mela|pera|banana|arancia|frutta|uva|fragola|kiwi|albicocc/.test(normalized)) return 'frutta';
-  if (/carota|zucchin|melanzan|pomodor|insalat|verdura|spinaci|broccoli|cipoll|aglio|fagiolin/.test(normalized)) return 'verdura';
-  if (/pollo|manzo|maiale|pesce|uov|salmone|tonno|prosciutto|carne|legum|fagiol|ceci|lenticch/.test(normalized)) return 'proteine';
-  if (/latte|yogurt|formaggio|burro|panna|ricotta/.test(normalized)) return 'latticini';
-  if (/pasta|riso|pane|farina|cereal|avena|farro|biscott/.test(normalized)) return 'cereali';
-  if (/surgelat/.test(normalized)) return 'surgelati';
-  if (/acqua|succo|bevanda|tè|te|caffè|caffe/.test(normalized)) return 'bevande';
-  if (/olio|aceto|sale|spezi|dispensa|marmellata/.test(normalized)) return 'dispensa';
-  return 'altro';
-};
-
 interface FoodResult {
   name: string;
   brand: string;
@@ -71,7 +65,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
 
   const weekDays = getWeekDays(weekStart);
   const officialMenuFor = (date: string) => plan?.weekly_menu.days[weekdayKey(date)];
-  const officialSuggestion = officialMenuFor(mealForm.date)?.[mealForm.mealType as keyof NonNullable<ReturnType<typeof officialMenuFor>>];
+  const officialSuggestion = officialSuggestionFor(plan, mealForm.date, mealForm.mealType);
 
   useEffect(() => {
     loadData();
@@ -138,6 +132,23 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
   const openAddMeal = (date: string, mealType = 'lunch') => {
     setEditMeal(null);
     setMealForm({ name: '', ingredients: '', notes: '', mealType, date, quantityG: '100', calories: '', protein: '', carbs: '', fat: '', fiber: '' });
+    setKcalPer100g(null);
+    setFoodResults([]);
+    setModal('add_meal');
+  };
+
+  const openOfficialMeal = (date: string, mealType: string) => {
+    const suggestion = officialSuggestionFor(plan, date, mealType);
+    if (!suggestion) return;
+    setEditMeal(null);
+    setMealForm({
+      name: suggestion,
+      ingredients: ingredientsForOfficialMeal(suggestion, mealType),
+      notes: 'Suggerimento flessibile del piano alimentare ufficiale',
+      mealType,
+      date,
+      quantityG: '', calories: '', protein: '', carbs: '', fat: '', fiber: '',
+    });
     setKcalPer100g(null);
     setFoodResults([]);
     setModal('add_meal');
@@ -487,16 +498,65 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
     showToast(`Copiati ${newMeals.length} pasti dalla settimana precedente!`, 'success');
   };
 
+  const planOfficialWeek = async () => {
+    const dates = weekDays.map(dateToISO);
+    const consumedSlots = consumedMeals.filter(meal => meal.meal_type).map(meal => ({
+      plan_date: dateToISO(new Date(meal.entry_datetime)),
+      meal_type: meal.meal_type as PlannedMeal['meal_type'],
+    }));
+    const suggestions = buildOfficialMealSuggestions(plan, dates, [...meals, ...consumedSlots], {
+      fromDate: todayISO(),
+      shifts: resolvedPlanningShifts(plan, dates, shifts),
+    });
+    if (!suggestions.length) {
+      showToast('I pasti futuri di questa settimana sono già pianificati.', 'success');
+      return;
+    }
+    if (isDemo) {
+      const created = suggestions.map<PlannedMeal>(suggestion => ({
+        id: Math.random().toString(36).slice(2), user_id: 'demo', ...suggestion,
+        quantity_g: null, calories_kcal: null, protein_g: null, carbs_g: null,
+        fat_g: null, fiber_g: null, is_completed: false, favorite_meal_id: null,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }));
+      setMeals(prev => [...prev, ...created]);
+      showToast(`Pianificati ${created.length} pasti suggeriti.`, 'success');
+      return;
+    }
+    if (!user) return;
+    const { data, error } = await supabase.from('planned_meals').insert(suggestions.map(suggestion => ({
+      user_id: user.id,
+      ...suggestion,
+      quantity_g: null,
+      calories_kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      fiber_g: null,
+    }))).select();
+    if (error) {
+      showToast(`Pasti non pianificati: ${error.message}`, 'error');
+      return;
+    }
+    setMeals(prev => [...prev, ...(data ?? [])]);
+    showToast(`Pianificati ${data?.length ?? 0} pasti dal piano ufficiale.`, 'success');
+  };
+
   const generateShoppingList = async () => {
     if (!user) return;
+    const dates = weekDays.map(dateToISO);
     const shoppingMeals = meals.filter(meal => meal.plan_date >= todayISO() && !meal.is_completed);
-    const ingredients = shoppingMeals
-      .flatMap(meal => (meal.ingredients ?? '').split(','))
-      .map(item => item.trim())
-      .filter(Boolean);
-    const unique = [...new Map(ingredients.map(item => [item.toLowerCase(), item])).values()];
-    if (!unique.length) {
-      showToast('Aggiungi gli ingredienti ai pasti per creare la lista.', 'info');
+    const consumedSlots = consumedMeals.filter(meal => meal.meal_type).map(meal => ({
+      plan_date: dateToISO(new Date(meal.entry_datetime)),
+      meal_type: meal.meal_type as PlannedMeal['meal_type'],
+    }));
+    const suggestions = buildOfficialMealSuggestions(plan, dates, [...meals, ...consumedSlots], {
+      fromDate: todayISO(),
+      shifts: resolvedPlanningShifts(plan, dates, shifts),
+    });
+    const needs = shoppingNeedsFromMeals([...shoppingMeals, ...suggestions]);
+    if (!needs.length) {
+      showToast('Non risultano acquisti da aggiungere per i pasti futuri.', 'info');
       return;
     }
     const weekStartISO = dateToISO(weekStart);
@@ -515,25 +575,40 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
       showToast(`Lista non creata: ${error?.message ?? 'errore sconosciuto'}`, 'error');
       return;
     }
-    const { data: currentItems } = await supabase.from('shopping_list_items').select('name').eq('list_id', list.id);
-    const currentNames = new Set((currentItems ?? []).map(item => item.name.trim().toLocaleLowerCase('it')));
-    const missing = unique.filter(name => !currentNames.has(name.toLocaleLowerCase('it')));
+    const { data: currentItems } = await supabase.from('shopping_list_items').select('*').eq('list_id', list.id);
+    const currentByName = new Map((currentItems ?? []).map(item => [item.name.trim().toLocaleLowerCase('it'), item]));
+    const neededNames = new Set(needs.map(need => need.name.toLocaleLowerCase('it')));
+    const obsolete = (currentItems ?? []).filter(item => !item.is_manual && !item.is_purchased && !neededNames.has(item.name.trim().toLocaleLowerCase('it')));
+    if (obsolete.length) await supabase.from('shopping_list_items').delete().in('id', obsolete.map(item => item.id));
+    await Promise.all(needs.map(need => {
+      const current = currentByName.get(need.name.toLocaleLowerCase('it'));
+      if (!current || current.is_manual || current.quantity === need.quantity) return Promise.resolve();
+      return supabase.from('shopping_list_items').update({ quantity: need.quantity, category: need.category }).eq('id', current.id).then(() => undefined);
+    }));
+    const missing = needs.filter(need => !currentByName.has(need.name.toLocaleLowerCase('it')));
     if (!missing.length) {
       showToast('La lista della spesa è già aggiornata.', 'success');
       return;
     }
-    const { error: itemsError } = await supabase.from('shopping_list_items').insert(missing.map(name => ({
+    const { error: itemsError } = await supabase.from('shopping_list_items').insert(missing.map(need => ({
       user_id: user.id,
       list_id: list.id,
-      name,
-      category: guessShoppingCategory(name),
+      name: need.name,
+      category: need.category,
+      quantity: need.quantity,
       is_manual: false,
     })));
     showToast(itemsError ? `Elementi non salvati: ${itemsError.message}` : `Lista aggiornata con ${missing.length} elementi.`, itemsError ? 'error' : 'success');
   };
 
-  const goToPrevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
-  const goToNextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
+  const moveWeek = (days: number) => {
+    const date = new Date(weekStart);
+    date.setDate(date.getDate() + days);
+    setWeekStart(date);
+    setSelectedDay(dateToISO(date));
+  };
+  const goToPrevWeek = () => moveWeek(-7);
+  const goToNextWeek = () => moveWeek(7);
 
   const getMealsForDay = (date: string) => meals.filter(m => m.plan_date === date);
   const getConsumedMealsForDay = (date: string) => consumedMeals.filter(
@@ -555,6 +630,12 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
           <button onClick={copyPrevWeek} className="text-xs text-sage-600 font-medium hover:underline">Copia settimana prec.</button>
         </div>
       </div>
+
+      {view === 'plan' && (
+        <button onClick={planOfficialWeek} className="btn-secondary w-full flex items-center justify-center gap-2">
+          <CalendarPlus size={17} /> Programma i suggerimenti futuri
+        </button>
+      )}
 
       <div className="segmented-control grid grid-cols-2 gap-2 bg-warm-gray-100 rounded-xl p-1">
         <button onClick={() => setView('plan')} className={`py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${view === 'plan' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
@@ -699,8 +780,12 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
           {officialMenuFor(selectedDay) && (
             <div className="card bg-sage-50 border-sage-200">
               <p className="text-xs font-semibold uppercase text-sage-700">Esempio della dietista</p>
-              <p className="text-sm text-warm-gray-700 mt-2"><strong>Pranzo:</strong> {officialMenuFor(selectedDay)?.lunch}</p>
-              <p className="text-sm text-warm-gray-700 mt-1"><strong>Cena:</strong> {officialMenuFor(selectedDay)?.dinner}</p>
+              <div className="space-y-1.5 mt-2">
+                {MEAL_TYPES.map(mealType => {
+                  const suggestion = officialSuggestionFor(plan, selectedDay, mealType);
+                  return suggestion ? <p key={mealType} className="text-sm text-warm-gray-700"><strong>{MEAL_TYPE_LABELS[mealType]}:</strong> {suggestion}</p> : null;
+                })}
+              </div>
               <p className="text-xs text-warm-gray-500 mt-2">Flessibile: quantità e alternative restano quelle del piano ufficiale.</p>
             </div>
           )}
@@ -724,7 +809,12 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
                   </div>
                 </div>
                 {dayMeals.length === 0 ? (
-                  <p className="text-xs text-warm-gray-300 italic">Nessun pasto pianificato</p>
+                  officialSuggestionFor(plan, selectedDay, mealType) ? (
+                    <button onClick={() => openOfficialMeal(selectedDay, mealType)} className="w-full text-left rounded-lg bg-sage-50 border border-sage-100 p-2">
+                      <span className="block text-xs font-semibold text-sage-700">Suggerito dal piano</span>
+                      <span className="block text-xs text-warm-gray-600 mt-1">{officialSuggestionFor(plan, selectedDay, mealType)}</span>
+                    </button>
+                  ) : <p className="text-xs text-warm-gray-300 italic">Nessun pasto pianificato</p>
                 ) : (
                   <div className="space-y-2">
                     {dayMeals.map(meal => (
@@ -736,6 +826,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium ${meal.is_completed ? 'line-through text-warm-gray-400' : 'text-warm-gray-800'}`}>{meal.name}</p>
                           {meal.ingredients && <p className="text-xs text-warm-gray-500 mt-0.5">{meal.ingredients}</p>}
+                          {meal.notes && <p className="text-xs text-sage-700 mt-0.5">{meal.notes}</p>}
                           {meal.calories_kcal !== null && <p className="text-xs font-medium text-amber-700 mt-0.5">{meal.calories_kcal} kcal{meal.quantity_g ? ` · ${meal.quantity_g} g` : ''}</p>}
                           {(meal.protein_g !== null || meal.carbs_g !== null || meal.fat_g !== null) && <p className="text-xs text-warm-gray-500 mt-0.5">P {meal.protein_g ?? 0}g · C {meal.carbs_g ?? 0}g · G {meal.fat_g ?? 0}g</p>}
                         </div>
@@ -833,7 +924,7 @@ export function SettimanaPage({ compact = false }: { compact?: boolean } = {}) {
             <div>
               <label className="label">Riferimento ufficiale per questo giorno</label>
               {officialSuggestion ? (
-                <button onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: officialSuggestion, ingredients: '', notes: 'Esempio flessibile del piano ufficiale', calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
+                <button onClick={() => { setKcalPer100g(null); setMealForm(p => ({ ...p, name: officialSuggestion, ingredients: ingredientsForOfficialMeal(officialSuggestion, p.mealType), quantityG: '', notes: 'Suggerimento flessibile del piano alimentare ufficiale', calories: '', protein: '', carbs: '', fat: '', fiber: '' })); }}
                   className="w-full text-left text-xs bg-sage-50 border border-sage-200 rounded-xl p-3 text-sage-900">
                   {officialSuggestion}
                 </button>
