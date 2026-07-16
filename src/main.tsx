@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './cambusa/cambusa.css';
 import './index.css';
 import './cambusa/cambusa-embedded.css';
+import './cambusa/cambusa-dialog-fixes.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

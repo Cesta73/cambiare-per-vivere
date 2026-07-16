@@ -1,8 +1,8 @@
 .cambusa-embedded {
   min-height: auto;
   padding-bottom: 0;
-  color: var(--ink);
-  background: transparent;
+  color: #e6eeeb;
+  background: #101820;
   font-family: "DM Sans", sans-serif;
 }
 
@@ -46,8 +46,8 @@
   gap: 0.25rem;
   margin: 0.9rem 0 0;
   padding: 0.25rem;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(18, 63, 73, 0.12);
+  background: #14242a;
+  border: 1px solid rgba(95, 183, 174, 0.24);
 }
 
 .cambusa-tabs button {
@@ -55,7 +55,7 @@
   min-height: 3.25rem;
   border: 0;
   background: transparent;
-  color: #6f756c;
+  color: #b9cfca;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -70,12 +70,12 @@
 }
 
 .cambusa-tabs button.active {
-  color: #f8f6ed;
-  background: var(--ink);
+  color: #101820;
+  background: #d8a331;
 }
 
 .cambusa-tabs button.active svg {
-  color: var(--saffron);
+  color: #101820;
 }
 
 .cambusa-embedded .welcome-band {
@@ -90,6 +90,92 @@
 .cambusa-embedded .welcome-band h1,
 .cambusa-embedded .page-title h1 {
   font-size: 1.75rem;
+}
+
+.cambusa-embedded .brand-lockup span,
+.cambusa-embedded .welcome-band h1,
+.cambusa-embedded .page-title h1,
+.cambusa-embedded .section-heading,
+.cambusa-embedded .metric-strip strong,
+.cambusa-embedded .product-row,
+.cambusa-embedded .shopping-row strong,
+.cambusa-embedded .recipe-title h2,
+.cambusa-embedded .member-row strong,
+.cambusa-embedded .family-action h2 {
+  color: #f3efe4;
+}
+
+.cambusa-embedded .brand-lockup small,
+.cambusa-embedded .welcome-band span,
+.cambusa-embedded .page-title p,
+.cambusa-embedded .metric-strip span,
+.cambusa-embedded .product-row span,
+.cambusa-embedded .shopping-row span,
+.cambusa-embedded .member-row small,
+.cambusa-embedded .family-action p,
+.cambusa-embedded .empty,
+.cambusa-embedded .invite-code span {
+  color: #a9c0bb;
+}
+
+.cambusa-embedded .brand-lockup .cambusa-eyebrow {
+  color: #d8a331;
+}
+
+.cambusa-embedded .cambusa-embedded-header,
+.cambusa-embedded .metric-strip,
+.cambusa-embedded .list-section,
+.cambusa-embedded .inventory-list,
+.cambusa-embedded .shopping-list,
+.cambusa-embedded .family-section,
+.cambusa-embedded .product-row,
+.cambusa-embedded .shopping-row,
+.cambusa-embedded .member-row,
+.cambusa-embedded .family-action,
+.cambusa-embedded .recipe-card li {
+  border-color: rgba(95, 183, 174, 0.24);
+}
+
+.cambusa-embedded .recommend-band,
+.cambusa-embedded .recipe-card,
+.cambusa-embedded .invite-code {
+  color: #e6eeeb;
+  background: #14242a;
+  border-color: rgba(95, 183, 174, 0.24);
+}
+
+.cambusa-embedded .recommend-band p {
+  color: #c6d8d4;
+}
+
+.cambusa-embedded .member-row > span {
+  color: #f3efe4;
+  background: #1b3035;
+  border: 1px solid rgba(216, 163, 49, 0.34);
+}
+
+.cambusa-embedded .icon-button,
+.cambusa-embedded .search-field input,
+.cambusa-embedded .quick-add input,
+.cambusa-embedded .manual-barcode input {
+  color: #e6eeeb;
+}
+
+.cambusa-embedded .search-field,
+.cambusa-embedded .quick-add,
+.cambusa-embedded .manual-barcode {
+  border-color: #8fada8;
+}
+
+.cambusa-embedded .secondary-button {
+  color: #d6e6df;
+  background: #17282e;
+  border-color: rgba(95, 183, 174, 0.34);
+}
+
+.cambusa-embedded .secondary-button:hover {
+  color: #101820;
+  background: #79c8c0;
 }
 
 .cambusa-embedded label {

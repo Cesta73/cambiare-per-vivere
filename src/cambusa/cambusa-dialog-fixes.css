@@ -1,0 +1,46 @@
+.dialog-backdrop {
+  z-index: 120;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+
+.dialog {
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
+  overscroll-behavior: contain;
+}
+
+.stock-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stock-dialog .dialog-head {
+  flex: 0 0 auto;
+}
+
+.dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.dialog-submit {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .dialog-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .stock-dialog {
+    height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    max-height: none;
+  }
+
+  .dialog-submit {
+    min-height: 52px;
+  }
+}
