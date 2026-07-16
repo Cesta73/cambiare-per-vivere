@@ -77,7 +77,7 @@ export function CheckinModal({ phase, onSave, onSkip }: CheckinModalProps) {
         </div>
 
         {/* Scores */}
-        <ScoreButtons label="Stress percepito (1=molto, 5=poco)" value={stress} onChange={setStress} />
+        <ScoreButtons label="Stress percepito (1=basso, 5=alto)" value={stress} onChange={setStress} />
         <ScoreButtons label="Energia (1=poca, 5=tanta)" value={energy} onChange={setEnergy} colorScale />
 
         {phase === 'before' && (

@@ -26,10 +26,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   return createPortal(
     <div
-      className="app-modal fixed inset-0 z-[100] flex min-h-[100dvh] items-end justify-center p-4 sm:items-center"
+      className="app-modal fixed inset-0 z-[100] flex min-h-[100dvh] items-end justify-center p-0 sm:items-center sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className={`app-modal-panel w-full ${sizeClass} max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain`}>
+      <div className={`app-modal-panel w-full ${sizeClass} max-h-[100dvh] overflow-y-auto overscroll-contain sm:max-h-[calc(100dvh-2rem)]`}>
         <div className="app-modal-header flex items-center justify-between px-5 py-4 sticky top-0 z-10">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button

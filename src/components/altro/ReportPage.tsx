@@ -167,7 +167,7 @@ export function ReportPage({ onBack }: Props) {
     if (reportData.mood?.length) {
       lines.push('UMORE, ENERGIA, MOTIVAZIONE E STRESS');
       reportData.mood.forEach((c: any) => {
-        const stress = c.stress_score !== null ? 6 - c.stress_score : '—';
+        const stress = c.stress_score !== null ? c.stress_score : '—';
         lines.push(`${formatDate(c.checkin_date)}: Umore ${c.mood_score ?? '—'}/5, Energia ${c.energy_score ?? '—'}/5, Motivazione ${c.motivation_score ?? '—'}/5, Stress ${stress}/5`);
       });
       lines.push('');
@@ -260,7 +260,7 @@ export function ReportPage({ onBack }: Props) {
       const totalActMin = act?.reduce((s: number, a: any) => s + a.duration_minutes, 0) ?? '';
       const meds = reportData.medications?.filter((m: any) => m.log_date === date) ?? [];
       const dayMeals = reportData.meals?.filter((m: any) => new Date(m.entry_datetime).toISOString().split('T')[0] === date) ?? [];
-      const stress = mood?.stress_score !== null && mood?.stress_score !== undefined ? 6 - mood.stress_score : '';
+      const stress = mood?.stress_score !== null && mood?.stress_score !== undefined ? mood.stress_score : '';
       rows.push([
         formatDate(date),
         'giornata',

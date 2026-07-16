@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse, Pill, Utensils } from 'lucide-react';
+import { TrendingDown, TrendingUp, Minus, Plus, Scale, Ruler, Activity, Bell, Flame, HeartPulse, Pill, Trash2, Utensils } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend, ComposedChart
@@ -7,12 +7,21 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { supabase } from '../../lib/supabase';
 import type { BodyMeasurement, ActivityEntry, DailyCheckin, HungerSatietyEntry, MedicationLog } from '../../lib/supabase';
-import { formatDateShort, formatDate, calculateBMI, getWeekStart, dateToISO, MEAL_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
+import { formatDateShort, formatDate, calculateBMI, dateToISO, MEAL_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from '../../lib/utils';
 import { QuickWeightModal } from '../oggi/QuickWeightModal';
 import { ageOnDate, DEFAULT_SEDENTARY_PAL, estimateRestingEnergy } from '../../lib/energy';
 import { useNutritionPlan } from '../../contexts/NutritionPlanContext';
 
 type ProgressTab = 'misure' | 'nutrizione' | 'attivita' | 'abitudini';
+
+const CHART_DAYS = 7;
+const SUMMARY_DAYS = 14;
+
+const recentDateKeys = (days: number) => Array.from({ length: days }, (_, index) => {
+  const date = new Date();
+  date.setDate(date.getDate() - (days - 1 - index));
+  return dateToISO(date);
+});
 
 export function ProgressiPage() {
   const { user, isDemo, profile, demoData, showToast, dataVersion } = useApp();
@@ -23,7 +32,6 @@ export function ProgressiPage() {
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [meals, setMeals] = useState<HungerSatietyEntry[]>([]);
   const [medicationLogs, setMedicationLogs] = useState<MedicationLog[]>([]);
-  const [caloriePeriod, setCaloriePeriod] = useState<'days' | 'weeks'>('days');
   const [loading, setLoading] = useState(true);
   const [addWeightModal, setAddWeightModal] = useState(false);
 
@@ -40,6 +48,25 @@ export function ProgressiPage() {
       repeat_rule: 'weekly',
     });
     showToast(error ? `Promemoria non salvato: ${error.message}` : 'Promemoria settimanale impostato per domenica alle 08:00.', error ? 'error' : 'success');
+  };
+
+  const deleteMeasurement = async (measurement: BodyMeasurement) => {
+    if (!user || isDemo) return;
+    const values = [
+      measurement.weight_kg !== null ? `${measurement.weight_kg} kg` : null,
+      measurement.waist_cm !== null ? `addome ${measurement.waist_cm} cm` : null,
+      measurement.systolic_bp !== null && measurement.diastolic_bp !== null
+        ? `pressione ${measurement.systolic_bp}/${measurement.diastolic_bp}`
+        : null,
+    ].filter(Boolean).join(' · ');
+    if (!confirm(`Eliminare la misurazione del ${formatDate(measurement.measured_at)}${values ? ` (${values})` : ''}?`)) return;
+    const { error } = await supabase.from('body_measurements').delete().eq('id', measurement.id).eq('user_id', user.id);
+    if (error) {
+      showToast(`Misurazione non eliminata: ${error.message}`, 'error');
+      return;
+    }
+    showToast('Misurazione eliminata.', 'success');
+    await loadData();
   };
 
   useEffect(() => {
@@ -82,15 +109,19 @@ export function ProgressiPage() {
     ? calculateBMI(latestWeightMeas.weight_kg, profile.height_cm)
     : null;
 
-  const weightData = measurements
+  const chartDates = recentDateKeys(CHART_DAYS);
+  const summaryDates = recentDateKeys(SUMMARY_DAYS);
+  const chartMeasurements = measurements.filter(m => chartDates.includes(dateToISO(new Date(m.measured_at))));
+
+  const weightData = chartMeasurements
     .filter(m => m.weight_kg)
     .map(m => ({ date: formatDateShort(m.measured_at), kg: m.weight_kg, label: formatDate(m.measured_at) }));
 
-  const circumferenceData = measurements
+  const circumferenceData = chartMeasurements
     .filter(m => m.waist_cm || m.neck_cm)
     .map(m => ({ date: formatDateShort(m.measured_at), addome: m.waist_cm, collo: m.neck_cm }));
 
-  const bloodPressureData = measurements
+  const bloodPressureData = chartMeasurements
     .filter(m => m.systolic_bp !== null && m.diastolic_bp !== null)
     .map(m => ({
       date: formatDateShort(m.measured_at),
@@ -99,16 +130,13 @@ export function ProgressiPage() {
       minima: m.diastolic_bp,
     }));
 
-  const activityByWeek = activities.reduce<Record<string, number>>((acc, a) => {
-    const d = new Date(a.activity_date + 'T12:00:00');
-    const weekKey = dateToISO(getWeekStart(d));
-    acc[weekKey] = (acc[weekKey] ?? 0) + a.duration_minutes;
-    return acc;
-  }, {});
-  const activityData = Object.entries(activityByWeek)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-8)
-    .map(([date, min]) => ({ date: formatDateShort(date), min }));
+  const activityData = chartDates
+    .map(date => ({
+      date: formatDateShort(date),
+      label: formatDate(date),
+      min: activities.filter(activity => activity.activity_date === date).reduce((sum, activity) => sum + activity.duration_minutes, 0),
+    }))
+    .filter(day => day.min > 0);
 
   const activityByType = Object.entries(activities.reduce<Record<string, { minutes: number; sessions: number; calories: number }>>((acc, activity) => {
     acc[activity.activity_type] ??= { minutes: 0, sessions: 0, calories: 0 };
@@ -137,34 +165,15 @@ export function ProgressiPage() {
     current.burned += activity.calories_burned_kcal ?? 0;
     calorieByDay.set(activity.activity_date, current);
   });
-  const calorieDailyData = Array.from({ length: 14 }, (_, index) => {
+  const calorieDailyData = Array.from({ length: CHART_DAYS }, (_, index) => {
     const date = new Date();
-    date.setDate(date.getDate() - (13 - index));
+    date.setDate(date.getDate() - (CHART_DAYS - 1 - index));
     const key = dateToISO(date);
     const values = calorieByDay.get(key) ?? { eaten: 0, burned: 0 };
     const consumed = baselineExpenditure ? baselineExpenditure + values.burned : 0;
     const balance = values.eaten > 0 && consumed > 0 ? values.eaten - consumed : null;
     return { date: formatDateShort(key), label: formatDate(key), obiettivo: calorieTarget, mangiate: values.eaten, rimanenti: Math.max(0, calorieTarget - values.eaten), attivita: values.burned, consumate: consumed, bilancio: balance };
   });
-  const calorieWeeklyMap = calorieDailyData.reduce<Record<string, { obiettivo: number; mangiate: number; attivita: number; consumate: number; bilancio: number }>>((acc, day) => {
-    const parts = day.label.split('/');
-    const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-    const key = dateToISO(getWeekStart(date));
-    acc[key] ??= { obiettivo: 0, mangiate: 0, attivita: 0, consumate: 0, bilancio: 0 };
-    acc[key].obiettivo += day.obiettivo;
-    acc[key].mangiate += day.mangiate;
-    acc[key].attivita += day.attivita;
-    acc[key].consumate += day.consumate;
-    acc[key].bilancio += day.bilancio ?? 0;
-    return acc;
-  }, {});
-  const calorieWeeklyData = Object.entries(calorieWeeklyMap).map(([date, values]) => ({
-    date: formatDateShort(date),
-    label: `Settimana del ${formatDate(date)}`,
-    ...values,
-    rimanenti: Math.max(0, values.obiettivo - values.mangiate),
-  }));
-  const calorieChartData = caloriePeriod === 'days' ? calorieDailyData : calorieWeeklyData;
   const todayCalories = calorieDailyData[calorieDailyData.length - 1];
   const todayKey = dateToISO(new Date());
   const todayMacros = meals
@@ -176,13 +185,8 @@ export function ProgressiPage() {
       fiber: total.fiber + (meal.fiber_g ?? 0),
     }), { protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
-  const recentDates = Array.from({ length: 14 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (13 - index));
-    return dateToISO(date);
-  });
   const mealTypes = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'night_snack'] as const;
-  const mealTrackingData = recentDates.map(date => {
+  const mealTrackingData = chartDates.map(date => {
     const dayMeals = meals.filter(meal => dateToISO(new Date(meal.entry_datetime)) === date);
     return {
       date: formatDateShort(date),
@@ -190,7 +194,7 @@ export function ProgressiPage() {
       ...Object.fromEntries(mealTypes.map(type => [type, dayMeals.filter(meal => meal.meal_type === type).length])),
     };
   });
-  const mealSensationData = recentDates.flatMap(date => {
+  const mealSensationData = chartDates.flatMap(date => {
     const dayMeals = meals.filter(meal => dateToISO(new Date(meal.entry_datetime)) === date);
     if (!dayMeals.length) return [];
     const average = (key: 'pre_hunger' | 'post_satiety' | 'post_satisfaction') => {
@@ -205,7 +209,7 @@ export function ProgressiPage() {
       soddisfazione: average('post_satisfaction'),
     }];
   });
-  const medicationDailyData = recentDates.map(date => {
+  const medicationDailyData = chartDates.map(date => {
     const logs = medicationLogs.filter(log => log.log_date === date);
     return {
       date: formatDateShort(date),
@@ -214,18 +218,18 @@ export function ProgressiPage() {
       nonAssunte: logs.filter(log => !log.taken).length,
     };
   });
-  const medicationTaken = medicationLogs.filter(log => recentDates.includes(log.log_date) && log.taken).length;
-  const medicationTracked = medicationLogs.filter(log => recentDates.includes(log.log_date)).length;
+  const medicationTaken = medicationLogs.filter(log => summaryDates.includes(log.log_date) && log.taken).length;
+  const medicationTracked = medicationLogs.filter(log => summaryDates.includes(log.log_date)).length;
   const medicationAdherence = medicationTracked ? Math.round(medicationTaken / medicationTracked * 100) : null;
-  const trackedMeals = meals.filter(meal => recentDates.includes(dateToISO(new Date(meal.entry_datetime))));
+  const trackedMeals = meals.filter(meal => summaryDates.includes(dateToISO(new Date(meal.entry_datetime))));
   const trackedMealDays = new Set(trackedMeals.map(meal => dateToISO(new Date(meal.entry_datetime)))).size;
   const completeMindfulMeals = trackedMeals.filter(meal => meal.pre_hunger !== null && meal.post_satiety !== null && meal.post_satisfaction !== null);
   const mindfulCompletion = trackedMeals.length ? Math.round(completeMindfulMeals.length / trackedMeals.length * 100) : null;
   const satisfactionValues = trackedMeals.map(meal => meal.post_satisfaction).filter((value): value is number => value !== null);
   const averageSatisfaction = satisfactionValues.length ? (satisfactionValues.reduce((sum, value) => sum + value, 0) / satisfactionValues.length).toFixed(1) : null;
   const checkinsByDate = new Map(checkins.map(checkin => [checkin.checkin_date, checkin]));
-  const hydrationDays = recentDates.filter(date => (checkinsByDate.get(date)?.water_ml ?? 0) >= 2000).length;
-  const stepsDailyData = recentDates.map(date => {
+  const hydrationDays = summaryDates.filter(date => (checkinsByDate.get(date)?.water_ml ?? 0) >= 2000).length;
+  const stepsDailyData = chartDates.map(date => {
     const steps = checkinsByDate.get(date)?.steps ?? null;
     return {
       date: formatDateShort(date),
@@ -255,7 +259,8 @@ export function ProgressiPage() {
   };
   const circumferenceDomain = dynamicDomain(circumferenceData.flatMap(item => [item.addome, item.collo]));
   const pressureDomain = dynamicDomain(bloodPressureData.flatMap(item => [item.massima, item.minima]));
-  const moodDomain = dynamicDomain(checkins.flatMap(item => [item.mood_score, item.energy_score, item.motivation_score, item.stress_score !== null ? 6 - item.stress_score : null]));
+  const chartCheckins = checkins.filter(item => chartDates.includes(item.checkin_date));
+  const moodDomain = dynamicDomain(chartCheckins.flatMap(item => [item.mood_score, item.energy_score, item.motivation_score, item.stress_score]));
   const sensationDomain = dynamicDomain(mealSensationData.flatMap(item => [item.fame, item.sazieta, item.soddisfazione]));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -383,6 +388,39 @@ export function ProgressiPage() {
             </div>
           )}
 
+          {measurements.length > 0 && (
+            <div className="card">
+              <h2 className="font-semibold text-warm-gray-800 mb-3">Ultime misurazioni</h2>
+              <div className="operational-list">
+                {[...measurements].reverse().slice(0, 7).map(measurement => (
+                  <div key={measurement.id} className="operational-row flex items-center gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-warm-gray-800">{formatDate(measurement.measured_at)}</p>
+                      <p className="text-xs text-warm-gray-500 mt-1">
+                        {[
+                          measurement.weight_kg !== null ? `${measurement.weight_kg} kg` : null,
+                          measurement.waist_cm !== null ? `addome ${measurement.waist_cm} cm` : null,
+                          measurement.neck_cm !== null ? `collo ${measurement.neck_cm} cm` : null,
+                          measurement.systolic_bp !== null && measurement.diastolic_bp !== null ? `${measurement.systolic_bp}/${measurement.diastolic_bp} mmHg` : null,
+                        ].filter(Boolean).join(' · ') || 'Altri parametri corporei'}
+                      </p>
+                    </div>
+                    {!isDemo && (
+                      <button
+                        onClick={() => deleteMeasurement(measurement)}
+                        className="p-2 text-rose-500 hover:bg-rose-50 transition-colors"
+                        aria-label={`Elimina misurazione del ${formatDate(measurement.measured_at)}`}
+                        title="Elimina misurazione"
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Weight chart */}
           {weightData.length >= 2 && (
             <div className="card">
@@ -480,10 +518,6 @@ export function ProgressiPage() {
             </div>
             <p className="text-xs text-warm-gray-500 mt-3">Basale: {basalMetabolism ?? '—'} kcal ({measuredBmr ? 'misurato' : 'Mifflin–St Jeor'}). Base quotidiana: {baselineExpenditure ?? '—'} kcal con PAL {DEFAULT_SEDENTARY_PAL}; attività nette aggiunte separatamente. Stime non mediche.</p>
           </div>
-          <div className="segmented-control grid grid-cols-2 gap-1 bg-warm-gray-100 rounded-xl p-1">
-            <button onClick={() => setCaloriePeriod('days')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'days' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Giorni</button>
-            <button onClick={() => setCaloriePeriod('weeks')} className={`py-2 rounded-lg text-sm font-semibold ${caloriePeriod === 'weeks' ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>Settimane</button>
-          </div>
           <div className="card">
             <h2 className="font-semibold text-warm-gray-800 mb-3">Macronutrienti di oggi</h2>
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -496,7 +530,7 @@ export function ProgressiPage() {
           <div className="card">
             <h2 className="font-semibold text-warm-gray-800 mb-4">Calorie assunte e consumate</h2>
             <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={calorieChartData} margin={{ left: -15, right: 5, top: 5, bottom: 5 }}>
+              <ComposedChart data={calorieDailyData} margin={{ left: -15, right: 5, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />
                 <YAxis tick={{ fontSize: 10, fill: '#8d877a' }} unit=" kcal" />
@@ -625,14 +659,14 @@ export function ProgressiPage() {
         <div className="space-y-4">
           <div className="card">
             <h2 className="font-semibold text-warm-gray-800 mb-3">Umore, energia, motivazione e stress</h2>
-            {checkins.length > 0 ? (
+            {chartCheckins.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={checkins.map(c => ({
+                <LineChart data={chartCheckins.map(c => ({
                   date: formatDateShort(c.checkin_date),
                   umore: c.mood_score,
                   energia: c.energy_score,
                   motivazione: c.motivation_score,
-                  stress: c.stress_score !== null ? 6 - c.stress_score : null,
+                  stress: c.stress_score,
                 }))} margin={{ left: -10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e3e0db" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#8d877a' }} />

@@ -33,6 +33,29 @@ export function QuickWeightModal({ onClose }: Props) {
       setLoading(false);
       return;
     }
+    if (weight) {
+      const numericWeight = parseFloat(weight);
+      if (numericWeight < 40 || numericWeight > 250) {
+        showToast('Controlla il peso: deve essere compreso tra 40 e 250 kg.', 'error');
+        setLoading(false);
+        return;
+      }
+      const { data: latest } = await supabase
+        .from('body_measurements')
+        .select('weight_kg')
+        .eq('user_id', user.id)
+        .not('weight_kg', 'is', null)
+        .order('measured_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latest?.weight_kg && Math.abs(numericWeight - latest.weight_kg) >= 15) {
+        const confirmed = confirm(`Il peso inserito (${numericWeight} kg) differisce di oltre 15 kg dall'ultima misurazione (${latest.weight_kg} kg). Confermi che è corretto?`);
+        if (!confirmed) {
+          setLoading(false);
+          return;
+        }
+      }
+    }
     const { error } = await supabase.from('body_measurements').insert({
         user_id: user.id,
         measured_at: todayISO(),

@@ -193,7 +193,7 @@ function AppContent() {
     <div className="min-h-screen app-backdrop app-shell">
       <div className="relative z-10 lg:grid lg:grid-cols-[15rem_minmax(0,52rem)] 2xl:grid-cols-[15rem_minmax(0,52rem)_19rem] lg:justify-center lg:items-start lg:gap-5 lg:px-6 lg:py-6">
         <DesktopSidebar />
-        <main className="app-main max-w-lg mx-auto px-4 pt-5 pb-28 lg:max-w-none lg:w-full lg:px-0 lg:pt-0 lg:pb-6">
+        <main className="app-main w-full max-w-lg mx-auto px-0 pt-0 pb-24 lg:max-w-none lg:pb-6">
           <div className={`workspace-view workspace-view-${activeTab}`}>
             {activeTab === 'oggi' && <OggiPage />}
             {activeTab === 'nutrizione' && <NutrizionePage />}

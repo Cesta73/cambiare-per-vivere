@@ -68,7 +68,7 @@ export function PracticePlayer({
   return (
     <div className="space-y-4">
       {/* Breath notice */}
-      <div className="bg-cream-100 border border-warm-gray-200 rounded-xl px-4 py-2 text-xs text-warm-gray-600 text-center">
+      <div className="bg-warm-gray-100 border border-warm-gray-200 rounded-xl px-4 py-2 text-xs text-warm-gray-600 text-center">
         Respira naturalmente. Salta o interrompi qualsiasi passaggio che provochi disagio.
       </div>
 
@@ -83,7 +83,7 @@ export function PracticePlayer({
 
       {/* Step guide */}
       {currentStep && (
-        <div className="bg-cream-50 border-l-4 border-sage-400 rounded-2xl p-4 space-y-3">
+        <div className="bg-warm-gray-50 border-l-4 border-sage-400 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-warm-gray-400 font-medium">Passo {timer.currentStepIndex + 1} / {timer.totalSteps}</p>

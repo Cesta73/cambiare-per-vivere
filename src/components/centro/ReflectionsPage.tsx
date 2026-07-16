@@ -56,7 +56,7 @@ export function ReflectionsPage({ onBack }: Props) {
         { id: 's3', practice_key: 'eveningFull', practice_name: 'Serenità serale', mode: 'spiritual', actual_duration_sec: 600, planned_duration_sec: 600, completed: true, started_at: new Date(now - 259200000).toISOString() },
       ]);
       setCheckins([
-        { session_id: 's1', phase: 'before', state_label: 'agitato', stress_score: 7, energy_score: 4, helpful: null, what_noticed: null },
+        { session_id: 's1', phase: 'before', state_label: 'agitato', stress_score: 5, energy_score: 4, helpful: null, what_noticed: null },
         { session_id: 's1', phase: 'after', state_label: 'calmo', stress_score: 4, energy_score: 5, helpful: 'sì', what_noticed: 'Ho notato la respirazione rallentare.' },
         { session_id: 's3', phase: 'before', state_label: 'stanco', stress_score: 5, energy_score: 3, helpful: null, what_noticed: null },
         { session_id: 's3', phase: 'after', state_label: 'leggero', stress_score: 3, energy_score: 4, helpful: 'sì', what_noticed: null },
