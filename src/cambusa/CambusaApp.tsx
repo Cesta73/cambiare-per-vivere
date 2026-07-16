@@ -154,7 +154,7 @@ function AuthScreen({ notify }: { notify: (toast: Toast) => void }) {
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password });
     setBusy(false);
-    if (result.error) notify({ kind: 'error', text: result.error.message });
+    if (result.error) notify({ kind: 'error', text: authErrorLabel(result.error.message) });
     else if (mode === 'signup' && !result.data.session) notify({ kind: 'ok', text: 'Controlla la mail per confermare l’accesso.' });
   };
   return <div className="auth-layout">
@@ -179,12 +179,29 @@ function MembershipScreen({ embedded = false, onReady, notify }: { embedded?: bo
   const join = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const inviteCode = String(form.get('code') || '').replace(/\s/g, '').toUpperCase();
     setBusy(true);
-    const { error } = await supabase.rpc('join_pantry_household', { invite_code: String(form.get('code') || ''), member_name: String(form.get('name') || '') });
+    const { error } = await supabase.rpc('join_pantry_household', { invite_code: inviteCode, member_name: String(form.get('name') || '') });
     setBusy(false);
-    if (error) notify({ kind: 'error', text: 'Codice non valido o scaduto.' }); else await onReady();
+    if (error) notify({ kind: 'error', text: membershipErrorLabel(error.message) }); else await onReady();
   };
-  return <div className={`membership-screen ${embedded ? 'embedded-state' : ''}`}><img src="/jarvis-emblem.png" alt="" /><h1>{embedded ? 'Attiva la tua Cambusa' : 'Unisciti alla cambusa'}</h1><p>{embedded ? 'Crea il magazzino condiviso; da qui potrai invitare i familiari.' : 'Usa il codice ricevuto da Gian oppure crea una nuova cambusa.'}</p>{!embedded && <form onSubmit={join}><label>Il tuo nome<input name="name" required /></label><label>Codice invito<input name="code" required maxLength={8} /></label><button className="primary-button" disabled={busy}>Entra in famiglia</button></form>}<button className={embedded ? 'primary-button membership-create' : 'text-button'} onClick={() => void create()} disabled={busy}>{busy ? 'Attendo...' : 'Crea la Cambusa di famiglia'}</button></div>;
+  return <div className={`membership-screen ${embedded ? 'embedded-state' : ''}`}><img src="/jarvis-emblem.png" alt="" /><h1>{embedded ? 'Attiva la tua Cambusa' : 'Unisciti alla cambusa'}</h1><p>{embedded ? 'Crea il magazzino condiviso; da qui potrai invitare i familiari.' : 'Inserisci il codice famiglia ricevuto da Gian.'}</p>{!embedded && <form onSubmit={join}><label>Il tuo nome<input name="name" autoComplete="name" required /></label><label>Codice famiglia<input name="code" autoCapitalize="characters" autoComplete="one-time-code" inputMode="text" pattern="[A-Fa-f0-9]{8}" required maxLength={8} onInput={(event) => { event.currentTarget.value = event.currentTarget.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase(); }} /></label><button className="primary-button" disabled={busy}>{busy ? 'Verifico...' : 'Entra in famiglia'}</button></form>}<button className={embedded ? 'primary-button membership-create' : 'text-button'} onClick={() => void create()} disabled={busy}>{busy ? 'Attendo...' : 'Crea la Cambusa di famiglia'}</button>{!embedded && <button className="text-button account-switch" onClick={() => void supabase.auth.signOut()} disabled={busy}><LogOut />Cambia account</button>}</div>;
+}
+
+function authErrorLabel(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('signups not allowed')) return 'La creazione degli accessi familiari non è disponibile. Riprova tra poco.';
+  if (normalized.includes('invalid login credentials')) return 'Email o password non corrette.';
+  if (normalized.includes('user already registered')) return 'Questa email ha già un accesso: usa “Accedi”.';
+  if (normalized.includes('password')) return 'La password deve contenere almeno 8 caratteri.';
+  return message;
+}
+
+function membershipErrorLabel(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('authentication_required')) return 'La sessione è scaduta: accedi di nuovo.';
+  if (normalized.includes('invalid_or_expired_invite')) return 'Il codice non è valido, è scaduto oppure è stato sostituito.';
+  return 'Non riesco a collegarti alla famiglia. Controlla il codice e riprova.';
 }
 
 function HomeView({ snapshot, notify, openStock }: ViewProps & { openStock: () => void }) {
@@ -283,7 +300,7 @@ function FamilyView({ snapshot, refresh, notify, embedded }: ViewProps & { embed
   };
   return <><PageTitle title="Famiglia" subtitle="Accessi e strumenti condivisi" />
     <section className="family-section"><div className="section-heading"><div><Users /><span>Membri</span></div></div>{snapshot.members.map((member) => <div className="member-row" key={member.id}><span>{member.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{member.display_name}</strong><small>{member.role === 'owner' ? 'Responsabile' : member.role === 'editor' ? 'Può modificare' : 'Solo lettura'}</small></div></div>)}</section>
-    {snapshot.member.role === 'owner' && <section className="family-action"><h2>Invita un familiare</h2><p>Il codice è personale e scade dopo sette giorni.</p>{invite ? <div className="invite-code"><strong>{invite.code}</strong><span>Scade {formatDate(invite.expires_at)}</span></div> : <button className="secondary-button" onClick={() => void makeInvite()}>Genera codice</button>}</section>}
+    {snapshot.member.role === 'owner' && <section className="family-action"><h2>Codice famiglia</h2><p>È valido per i familiari invitati e scade dopo sette giorni.</p>{invite ? <div className="invite-code"><strong>{invite.code}</strong><span>Scade {formatDate(invite.expires_at)}</span></div> : <button className="secondary-button" onClick={() => void makeInvite()}>Genera codice</button>}</section>}
     {embedded && <section className="family-action"><h2>Accesso per la famiglia</h2><p>Katia e Gabriele possono chiedere il collegamento scrivendo <strong>/cambusa</strong> a Famiglia Jarvis, poi useranno il codice invito generato qui.</p><a className="secondary-button" href="/cambusa.html" target="_blank" rel="noreferrer">Apri accesso familiari</a></section>}
     <section className="family-action"><h2>Carica scontrino</h2><p>La foto viene conservata nella coda di revisione. Il riconoscimento automatico degli articoli sarà attivato nel prossimo rilascio.</p><label className="secondary-button file-button"><Camera />{uploading ? 'Caricamento...' : 'Fotografa scontrino'}<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void uploadReceipt(event)} disabled={uploading} /></label></section>
     {!embedded && <button className="logout-button" onClick={() => void supabase.auth.signOut()}><LogOut />Esci da questo dispositivo</button>}
