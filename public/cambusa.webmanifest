@@ -1,0 +1,13 @@
+{
+  "name": "Cambusa Famiglia Jarvis",
+  "short_name": "Cambusa",
+  "description": "Cambusa, spesa e ricette condivise con Famiglia Jarvis",
+  "start_url": "/cambusa.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f0e8",
+  "theme_color": "#20261f",
+  "icons": [
+    { "src": "/jarvis-emblem.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

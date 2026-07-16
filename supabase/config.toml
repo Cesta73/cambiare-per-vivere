@@ -3,6 +3,6 @@ project_id = "jgdylkvdcegelntzirlw"
 [auth]
 site_url = "https://gianlucacestarollo.com"
 additional_redirect_urls = ["https://cesta73.github.io/cambiare-per-vivere/"]
-enable_signup = false
+enable_signup = true
 enable_anonymous_sign_ins = false
 minimum_password_length = 8
