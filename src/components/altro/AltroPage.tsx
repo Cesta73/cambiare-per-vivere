@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  ShoppingCart, Pill, User, FileText, ChevronRight,
+  Archive, Pill, User, FileText, ChevronRight,
   Leaf, Info, Database, Salad
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { ShoppingPage } from './ShoppingPage';
 import { MedicationsPage } from './MedicationsPage';
 import { ProfilePage } from './ProfilePage';
 import { ReportPage } from './ReportPage';
 import { JarvisCorePage } from './JarvisCorePage';
 
-type AltroSection = null | 'jarvis-core' | 'shopping' | 'medications' | 'profile' | 'report';
+type AltroSection = null | 'jarvis-core' | 'medications' | 'profile' | 'report';
 
 export function AltroPage() {
   const { profile, isDemo, signOut, setActiveTab, jarvisCoreRequestId } = useApp();
@@ -21,7 +20,6 @@ export function AltroPage() {
   }, [jarvisCoreRequestId]);
 
   if (section === 'jarvis-core') return <JarvisCorePage onBack={() => setSection(null)} />;
-  if (section === 'shopping') return <ShoppingPage onBack={() => setSection(null)} />;
   if (section === 'medications') return <MedicationsPage onBack={() => setSection(null)} />;
   if (section === 'profile') return <ProfilePage onBack={() => setSection(null)} />;
   if (section === 'report') return <ReportPage onBack={() => setSection(null)} />;
@@ -33,13 +31,6 @@ export function AltroPage() {
       label: 'Jarvis Core',
       description: 'Conversazione diretta con Jarvis',
       color: 'bg-petrol-50 text-petrol-700',
-    },
-    {
-      id: 'shopping' as const,
-      icon: ShoppingCart,
-      label: 'Lista della spesa',
-      description: 'Genera e gestisci la lista settimanale',
-      color: 'bg-green-50 text-green-700',
     },
     {
       id: 'medications' as const,
@@ -83,6 +74,10 @@ export function AltroPage() {
       )}
 
       <div className="space-y-2">
+        <button onClick={() => setActiveTab('cambusa')} className="w-full card flex items-center gap-4 hover:bg-warm-gray-50 text-left">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-green-50 text-green-700"><Archive size={22} /></div>
+          <div className="flex-1"><p className="font-semibold text-warm-gray-800">Cambusa e spesa condivisa</p><p className="text-sm text-warm-gray-500 mt-0.5">Scorte, scadenze, ricette e acquisti familiari</p></div><ChevronRight size={18} className="text-warm-gray-300" />
+        </button>
         <button onClick={() => setActiveTab('nutrizione')} className="w-full card flex items-center gap-4 hover:bg-warm-gray-50 text-left">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-sage-50 text-sage-700"><Salad size={22} /></div>
           <div className="flex-1"><p className="font-semibold text-warm-gray-800">Piano nutrizionale</p><p className="text-sm text-warm-gray-500 mt-0.5">Indicazioni, menù, registrazioni e spesa</p></div><ChevronRight size={18} className="text-warm-gray-300" />

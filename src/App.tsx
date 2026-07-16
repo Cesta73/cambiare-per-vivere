@@ -14,6 +14,7 @@ import { ToastContainer } from './components/ui/Toast';
 import { ReminderWatcher } from './components/reminders/ReminderWatcher';
 import {
   BookOpen,
+  Archive,
   CalendarDays,
   HeartPulse,
   Home,
@@ -30,10 +31,12 @@ import type { AppTab } from './contexts/AppContext';
 import { BrandMark } from './components/brand/BrandMark';
 import { NutrizionePage } from './components/nutrizione/NutrizionePage';
 import { NutritionPlanProvider } from './contexts/NutritionPlanContext';
+import { CambusaApp } from './cambusa/CambusaApp';
 
 const DESKTOP_NAV: { tab: AppTab; label: string; detail: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', detail: 'Bussola quotidiana', Icon: Home },
   { tab: 'nutrizione', label: 'Nutrizione', detail: 'Piano e scelte quotidiane', Icon: Salad },
+  { tab: 'cambusa', label: 'Cambusa', detail: 'Scorte, spesa e scadenze', Icon: Archive },
   { tab: 'diario', label: 'Diario', detail: 'Riflessioni e continuità', Icon: BookOpen },
   { tab: 'agenda', label: 'Agenda', detail: 'Impegni, turni e terapie', Icon: CalendarDays },
   { tab: 'progressi', label: 'Progressi', detail: 'Andamento e segnali', Icon: TrendingUp },
@@ -194,6 +197,7 @@ function AppContent() {
           <div className={`workspace-view workspace-view-${activeTab}`}>
             {activeTab === 'oggi' && <OggiPage />}
             {activeTab === 'nutrizione' && <NutrizionePage />}
+            {activeTab === 'cambusa' && <CambusaApp embedded />}
             {activeTab === 'diario' && <DiarioPage />}
             {activeTab === 'agenda' && <AgendaPage />}
             {activeTab === 'raw-data' && <RawDataPage />}

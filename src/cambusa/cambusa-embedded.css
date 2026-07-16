@@ -1,0 +1,136 @@
+.cambusa-embedded {
+  min-height: auto;
+  padding-bottom: 0;
+  color: var(--ink);
+  background: transparent;
+  font-family: "DM Sans", sans-serif;
+}
+
+.cambusa-embedded .cambusa-embedded-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.cambusa-embedded .brand-lockup span {
+  font-family: "Marcellus", serif;
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.cambusa-embedded .brand-lockup small {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.cambusa-embedded .brand-lockup .cambusa-eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--green);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.cambusa-embedded .content {
+  width: 100%;
+  padding: 1.1rem 0 0;
+}
+
+.cambusa-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin: 0.9rem 0 0;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(18, 63, 73, 0.12);
+}
+
+.cambusa-tabs button {
+  min-width: 0;
+  min-height: 3.25rem;
+  border: 0;
+  background: transparent;
+  color: #6f756c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.cambusa-tabs button svg {
+  width: 1.15rem;
+}
+
+.cambusa-tabs button.active {
+  color: #f8f6ed;
+  background: var(--ink);
+}
+
+.cambusa-tabs button.active svg {
+  color: var(--saffron);
+}
+
+.cambusa-embedded .welcome-band {
+  padding-top: 0.4rem;
+}
+
+.cambusa-embedded .recommend-band {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.cambusa-embedded .welcome-band h1,
+.cambusa-embedded .page-title h1 {
+  font-size: 1.75rem;
+}
+
+.cambusa-embedded label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cambusa-embedded input,
+.cambusa-embedded select {
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #faf9f4;
+  padding: 0 0.7rem;
+  color: var(--ink);
+}
+
+.cambusa-surface .embedded-state {
+  min-height: 28rem;
+  border: 1px solid rgba(18, 63, 73, 0.13);
+  background: #fbfaf6;
+}
+
+.cambusa-surface .embedded-state .membership-create {
+  width: min(25rem, 100%);
+  margin-top: 1rem;
+}
+
+@media (max-width: 520px) {
+  .cambusa-tabs button {
+    font-size: 0.61rem;
+  }
+
+  .cambusa-embedded .metric-strip > div {
+    padding-inline: 0.35rem;
+  }
+
+  .cambusa-embedded .cambusa-embedded-header {
+    align-items: center;
+  }
+}

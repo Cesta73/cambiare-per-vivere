@@ -10,9 +10,8 @@ import type { HungerSatietyEntry } from '../../lib/supabase';
 import { MEAL_TYPE_LABELS, todayISO } from '../../lib/utils';
 import { QuickMealModal } from '../oggi/QuickMealModal';
 import { SettimanaPage } from '../settimana/SettimanaPage';
-import { ShoppingPage } from '../altro/ShoppingPage';
 
-type NutritionTab = 'oggi' | 'piano' | 'settimana' | 'spesa';
+type NutritionTab = 'oggi' | 'piano' | 'settimana' | 'cambusa';
 
 const DAY_LABELS: Record<string, string> = {
   monday: 'Lunedì', tuesday: 'Martedì', wednesday: 'Mercoledì',
@@ -33,7 +32,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export function NutrizionePage() {
-  const { user, openJarvisCore, dataVersion } = useApp();
+  const { user, openJarvisCore, dataVersion, setActiveTab } = useApp();
   const { plan, loading, error, refresh } = useNutritionPlan();
   const [tab, setTab] = useState<NutritionTab>('oggi');
   const [mealModal, setMealModal] = useState(false);
@@ -54,10 +53,6 @@ export function NutrizionePage() {
     meal.pre_hunger !== null && meal.post_satiety !== null && meal.post_satisfaction !== null,
   ).length, [meals]);
 
-  if (tab === 'spesa') {
-    return <ShoppingPage onBack={() => setTab('oggi')} />;
-  }
-
   return (
     <div className="space-y-4 pb-4">
       <div className="page-intro">
@@ -68,9 +63,9 @@ export function NutrizionePage() {
 
       <div className="segmented-control grid grid-cols-4 gap-1 bg-warm-gray-100 rounded-xl p-1">
         {([
-          ['oggi', 'Oggi'], ['piano', 'Piano'], ['settimana', 'Settimana'], ['spesa', 'Spesa'],
+          ['oggi', 'Oggi'], ['piano', 'Piano'], ['settimana', 'Settimana'], ['cambusa', 'Cambusa'],
         ] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
+          <button key={id} onClick={() => id === 'cambusa' ? setActiveTab('cambusa') : setTab(id)}
             className={`min-w-0 py-2 rounded-lg text-xs font-semibold ${tab === id ? 'bg-white text-sage-700 shadow-sm' : 'text-warm-gray-500'}`}>
             {label}
           </button>

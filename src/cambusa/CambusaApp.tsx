@@ -47,7 +47,7 @@ const previewSnapshot: PantrySnapshot = {
   summary: { products: 4, low_stock: 1, expiring_soon: 2, expired: 0, shopping: 2 },
 };
 
-export function CambusaApp() {
+export function CambusaApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [session, setSession] = useState<Session | null>(previewMode ? ({} as Session) : null);
   const [authReady, setAuthReady] = useState(previewMode);
   const [snapshot, setSnapshot] = useState<PantrySnapshot | null>(previewMode ? previewSnapshot : null);
@@ -92,17 +92,23 @@ export function CambusaApp() {
 
   useEffect(() => { if (session) void refresh(); else setSnapshot(null); }, [refresh, session]);
 
-  if (!authReady) return <LoadingScreen />;
-  if (!session) return <AuthScreen notify={notify} />;
-  if (membershipMissing) return <MembershipScreen onReady={refresh} notify={notify} />;
-  if (!snapshot) return <LoadingScreen />;
+  if (!authReady) return <div className="cambusa-surface"><LoadingScreen embedded={embedded} /></div>;
+  if (!session) return embedded
+    ? <div className="cambusa-surface"><LoadingScreen embedded /></div>
+    : <div className="cambusa-surface"><AuthScreen notify={notify} /></div>;
+  if (membershipMissing) return <div className="cambusa-surface"><MembershipScreen embedded={embedded} onReady={refresh} notify={notify} /></div>;
+  if (!snapshot) return <div className="cambusa-surface"><LoadingScreen embedded={embedded} /></div>;
 
   return (
-    <div className="cambusa-shell">
-      <header className="topbar">
+    <div className={`cambusa-surface cambusa-shell ${embedded ? 'cambusa-embedded' : ''}`}>
+      <header className={embedded ? 'cambusa-embedded-header' : 'topbar'}>
         <div className="brand-lockup">
-          <img src="/jarvis-emblem.png" alt="" />
-          <div><span>Cambusa Famiglia</span><small>{snapshot.household.name}</small></div>
+          {!embedded && <img src="/jarvis-emblem.png" alt="" />}
+          <div>
+            {embedded && <small className="cambusa-eyebrow">Nutrizione · casa</small>}
+            <span>{embedded ? 'Cambusa' : 'Cambusa Famiglia'}</span>
+            <small>{embedded ? 'Scorte, scadenze, spesa e ricette della famiglia' : snapshot.household.name}</small>
+          </div>
         </div>
         <button className="icon-button" title="Aggiorna" onClick={() => void refresh()} disabled={loading}>
           <RefreshCw className={loading ? 'spin' : ''} />
@@ -114,10 +120,10 @@ export function CambusaApp() {
         {view === 'pantry' && <PantryView snapshot={snapshot} refresh={refresh} notify={notify} openStock={() => setStockOpen(true)} openBarcode={(seed) => { setBarcodeSeed(seed); setStockOpen(true); }} />}
         {view === 'shopping' && <ShoppingView snapshot={snapshot} refresh={refresh} notify={notify} />}
         {view === 'recipes' && <RecipesView snapshot={snapshot} refresh={refresh} notify={notify} />}
-        {view === 'family' && <FamilyView snapshot={snapshot} refresh={refresh} notify={notify} />}
+        {view === 'family' && <FamilyView snapshot={snapshot} refresh={refresh} notify={notify} embedded={embedded} />}
       </main>
 
-      <nav className="bottom-nav" aria-label="Navigazione principale">
+      <nav className={embedded ? 'cambusa-tabs' : 'bottom-nav'} aria-label="Sezioni Cambusa">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return <button key={tab.id} className={view === tab.id ? 'active' : ''} onClick={() => setView(tab.id)}><Icon /><span>{tab.label}</span></button>;
@@ -130,8 +136,8 @@ export function CambusaApp() {
   );
 }
 
-function LoadingScreen() {
-  return <div className="center-screen"><img src="/jarvis-emblem.png" alt="" /><p>Allineo la cambusa...</p></div>;
+function LoadingScreen({ embedded = false }: { embedded?: boolean }) {
+  return <div className={`center-screen ${embedded ? 'embedded-state' : ''}`}><img src="/jarvis-emblem.png" alt="" /><p>Allineo la cambusa...</p></div>;
 }
 
 function AuthScreen({ notify }: { notify: (toast: Toast) => void }) {
@@ -161,7 +167,7 @@ function AuthScreen({ notify }: { notify: (toast: Toast) => void }) {
   </div>;
 }
 
-function MembershipScreen({ onReady, notify }: { onReady: () => Promise<void>; notify: (toast: Toast) => void }) {
+function MembershipScreen({ embedded = false, onReady, notify }: { embedded?: boolean; onReady: () => Promise<void>; notify: (toast: Toast) => void }) {
   const [busy, setBusy] = useState(false);
   const create = async () => {
     setBusy(true);
@@ -177,10 +183,10 @@ function MembershipScreen({ onReady, notify }: { onReady: () => Promise<void>; n
     setBusy(false);
     if (error) notify({ kind: 'error', text: 'Codice non valido o scaduto.' }); else await onReady();
   };
-  return <div className="membership-screen"><img src="/jarvis-emblem.png" alt="" /><h1>Unisciti alla cambusa</h1><p>Usa il codice ricevuto da Gian oppure crea una nuova cambusa.</p><form onSubmit={join}><label>Il tuo nome<input name="name" required /></label><label>Codice invito<input name="code" required maxLength={8} /></label><button className="primary-button" disabled={busy}>Entra in famiglia</button></form><button className="text-button" onClick={() => void create()} disabled={busy}>Crea una nuova cambusa</button></div>;
+  return <div className={`membership-screen ${embedded ? 'embedded-state' : ''}`}><img src="/jarvis-emblem.png" alt="" /><h1>{embedded ? 'Attiva la tua Cambusa' : 'Unisciti alla cambusa'}</h1><p>{embedded ? 'Crea il magazzino condiviso; da qui potrai invitare i familiari.' : 'Usa il codice ricevuto da Gian oppure crea una nuova cambusa.'}</p>{!embedded && <form onSubmit={join}><label>Il tuo nome<input name="name" required /></label><label>Codice invito<input name="code" required maxLength={8} /></label><button className="primary-button" disabled={busy}>Entra in famiglia</button></form>}<button className={embedded ? 'primary-button membership-create' : 'text-button'} onClick={() => void create()} disabled={busy}>{busy ? 'Attendo...' : 'Crea la Cambusa di famiglia'}</button></div>;
 }
 
-function HomeView({ snapshot, refresh, notify, openStock }: ViewProps & { openStock: () => void }) {
+function HomeView({ snapshot, notify, openStock }: ViewProps & { openStock: () => void }) {
   const [servings, setServings] = useState(2);
   const [recommendation, setRecommendation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -254,7 +260,7 @@ function RecipesView({ snapshot, refresh, notify }: ViewProps) {
   </>;
 }
 
-function FamilyView({ snapshot, refresh, notify }: ViewProps) {
+function FamilyView({ snapshot, refresh, notify, embedded }: ViewProps & { embedded: boolean }) {
   const [invite, setInvite] = useState<{ code: string; expires_at: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const makeInvite = async () => {
@@ -277,8 +283,9 @@ function FamilyView({ snapshot, refresh, notify }: ViewProps) {
   return <><PageTitle title="Famiglia" subtitle="Accessi e strumenti condivisi" />
     <section className="family-section"><div className="section-heading"><div><Users /><span>Membri</span></div></div>{snapshot.members.map((member) => <div className="member-row" key={member.id}><span>{member.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{member.display_name}</strong><small>{member.role === 'owner' ? 'Responsabile' : member.role === 'editor' ? 'Può modificare' : 'Solo lettura'}</small></div></div>)}</section>
     {snapshot.member.role === 'owner' && <section className="family-action"><h2>Invita un familiare</h2><p>Il codice è personale e scade dopo sette giorni.</p>{invite ? <div className="invite-code"><strong>{invite.code}</strong><span>Scade {formatDate(invite.expires_at)}</span></div> : <button className="secondary-button" onClick={() => void makeInvite()}>Genera codice</button>}</section>}
+    {embedded && <section className="family-action"><h2>Accesso per la famiglia</h2><p>Katia e Gabriele possono chiedere il collegamento scrivendo <strong>/cambusa</strong> a Famiglia Jarvis, poi useranno il codice invito generato qui.</p><a className="secondary-button" href="/cambusa.html" target="_blank" rel="noreferrer">Apri accesso familiari</a></section>}
     <section className="family-action"><h2>Carica scontrino</h2><p>La foto viene conservata nella coda di revisione. Il riconoscimento automatico degli articoli sarà attivato nel prossimo rilascio.</p><label className="secondary-button file-button"><Camera />{uploading ? 'Caricamento...' : 'Fotografa scontrino'}<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void uploadReceipt(event)} disabled={uploading} /></label></section>
-    <button className="logout-button" onClick={() => void supabase.auth.signOut()}><LogOut />Esci da questo dispositivo</button>
+    {!embedded && <button className="logout-button" onClick={() => void supabase.auth.signOut()}><LogOut />Esci da questo dispositivo</button>}
   </>;
 }
 

@@ -1,10 +1,11 @@
-import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal, Salad } from 'lucide-react';
+import { Sun, CalendarDays, BookOpen, TrendingUp, MoreHorizontal, Salad, Archive } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp, type AppTab } from '../../contexts/AppContext';
 
 const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Oggi', Icon: Sun },
   { tab: 'nutrizione', label: 'Piano', Icon: Salad },
+  { tab: 'cambusa', label: 'Cambusa', Icon: Archive },
   { tab: 'diario', label: 'Diario', Icon: BookOpen },
   { tab: 'agenda', label: 'Agenda', Icon: CalendarDays },
   { tab: 'progressi', label: 'Progressi', Icon: TrendingUp },
@@ -26,7 +27,7 @@ export function BottomNav() {
             aria-current={activeTab === tab ? 'page' : undefined}
           >
             <span className="nav-icon-frame"><Icon size={20} strokeWidth={1.9} /></span>
-            <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+            <span className="min-w-0 max-w-full truncate text-[9px] font-semibold">{label}</span>
           </button>
         ))}
       </div>
