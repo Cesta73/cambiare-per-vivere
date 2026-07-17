@@ -1,5 +1,13 @@
-const CACHE = 'cambusa-famiglia-v1';
-const SHELL = ['/cambusa.html', '/cambusa.webmanifest', '/jarvis-emblem.png', '/jarvis-mark.svg'];
+const CACHE = 'cambusa-famiglia-v2-logo-a';
+const SHELL = [
+  '/cambusa.html',
+  '/cambusa.webmanifest',
+  '/jarvis-emblem.png',
+  '/jarvis-mark.svg',
+  '/jarvis-icon-192.png',
+  '/jarvis-icon-512.png',
+  '/apple-touch-icon.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));

@@ -1,10 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="8" fill="#101820"/>
-  <g stroke="#5FB7AE" stroke-width="2" stroke-linecap="square">
-    <circle cx="29" cy="27" r="18"/>
-    <path d="M29 5V16M29 38V49M7 27H18M40 27H51M13.4 11.4L21.2 19.2M36.8 34.8L44.6 42.6M44.6 11.4L36.8 19.2M21.2 34.8L13.4 42.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <title>Jarvis</title>
+  <rect width="100" height="100" rx="18" fill="#082C39"/>
+  <circle cx="50" cy="48" r="34" stroke="#D8A84E" stroke-width="3"/>
+  <g fill="#D8A84E">
+    <path d="M50 5 54 37H46L50 5Z"/>
+    <path d="m95 48-32 4v-8l32 4Z"/>
+    <path d="m5 48 32-4v8L5 48Z"/>
+    <path d="m50 94-4-31h8l-4 31Z"/>
   </g>
-  <circle cx="29" cy="27" r="3" fill="#F3EFE4"/>
-  <path d="M29 27V48C29 56 39 59 44 52C47 48 46 43 46 38" stroke="#F3EFE4" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="29" cy="5" r="2.5" fill="#D8A331"/>
+  <g fill="#9DAF91">
+    <path d="m21 19 22 17-6 6-16-23Z"/>
+    <path d="m79 19-16 23-6-6 22-17Z"/>
+    <path d="m79 77-22-17 6-6 16 23Z"/>
+    <path d="m21 77 16-23 6 6-22 17Z"/>
+  </g>
+  <g fill="#082C39" stroke="#D8A84E" stroke-width="3">
+    <circle cx="24" cy="24" r="4"/>
+    <circle cx="76" cy="24" r="4"/>
+    <circle cx="76" cy="72" r="4"/>
+    <circle cx="24" cy="72" r="4"/>
+    <circle cx="50" cy="48" r="13"/>
+  </g>
+  <path d="M50 37c1.2 5.4-4.8 7.8-4.8 13 0 3.3 2 5.9 5.1 7.1-1.2-2.5-.5-4.7 1.5-7.1 2.3 3.1 3.7 5.5 3.7 8 0 3.4-2.2 6.1-5.5 7.2-5.8-1.5-9.2-5.6-9.2-10.7 0-6.5 6.6-10 9.2-17.5Z" fill="#F0BD58"/>
+  <path d="M50 61v18c0 7-5 10-9.4 7.4-2.8-1.7-3.1-5.8-.7-7.9" stroke="#D8A84E" stroke-width="5" stroke-linecap="round"/>
 </svg>

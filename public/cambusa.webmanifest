@@ -8,6 +8,7 @@
   "background_color": "#f2f0e8",
   "theme_color": "#20261f",
   "icons": [
-    { "src": "/jarvis-emblem.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/jarvis-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/jarvis-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

@@ -5,26 +5,38 @@ interface BrandMarkProps {
 
 export function BrandMark({ className = 'w-10 h-10', title = 'Jarvis' }: BrandMarkProps) {
   return (
-    <svg className={className} viewBox="0 0 64 64" role="img" aria-label={title} fill="none">
-      <circle cx="29" cy="27" r="18" stroke="currentColor" strokeWidth="2" />
-      <circle cx="29" cy="27" r="3" fill="currentColor" />
-      {[0, 45, 90, 135].map(angle => (
-        <path
-          key={angle}
-          d="M29 5V16M29 38V49"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="square"
-          transform={`rotate(${angle} 29 27)`}
-        />
-      ))}
+    <svg className={className} viewBox="0 0 100 100" role="img" aria-label={title} fill="none">
+      <rect width="100" height="100" rx="18" fill="#082C39" />
+      <circle cx="50" cy="48" r="34" stroke="#D8A84E" strokeWidth="3" />
+      <g fill="#D8A84E">
+        <path d="M50 5 54 37H46L50 5Z" />
+        <path d="m95 48-32 4v-8l32 4Z" />
+        <path d="m5 48 32-4v8L5 48Z" />
+        <path d="m50 94-4-31h8l-4 31Z" />
+      </g>
+      <g fill="#9DAF91">
+        <path d="m21 19 22 17-6 6-16-23Z" />
+        <path d="m79 19-16 23-6-6 22-17Z" />
+        <path d="m79 77-22-17 6-6 16 23Z" />
+        <path d="m21 77 16-23 6 6-22 17Z" />
+      </g>
+      <g fill="#082C39" stroke="#D8A84E" strokeWidth="3">
+        <circle cx="24" cy="24" r="4" />
+        <circle cx="76" cy="24" r="4" />
+        <circle cx="76" cy="72" r="4" />
+        <circle cx="24" cy="72" r="4" />
+        <circle cx="50" cy="48" r="13" />
+      </g>
       <path
-        d="M29 27V48C29 56 39 59 44 52C47 48 46 43 46 38"
-        stroke="currentColor"
-        strokeWidth="3"
+        d="M50 37c1.2 5.4-4.8 7.8-4.8 13 0 3.3 2 5.9 5.1 7.1-1.2-2.5-.5-4.7 1.5-7.1 2.3 3.1 3.7 5.5 3.7 8 0 3.4-2.2 6.1-5.5 7.2-5.8-1.5-9.2-5.6-9.2-10.7 0-6.5 6.6-10 9.2-17.5Z"
+        fill="#F0BD58"
+      />
+      <path
+        d="M50 61v18c0 7-5 10-9.4 7.4-2.8-1.7-3.1-5.8-.7-7.9"
+        stroke="#D8A84E"
+        strokeWidth="5"
         strokeLinecap="round"
       />
-      <circle cx="29" cy="5" r="2.5" fill="#D8A331" />
     </svg>
   );
 }

@@ -22,7 +22,10 @@ export function ReminderWatcher() {
         .lte('remind_at', windowEnd);
 
       for (const reminder of data ?? []) {
-        new Notification(reminder.title, { body: reminder.notes ?? 'Cambiare per Vivere' });
+        new Notification(reminder.title, {
+          body: reminder.notes ?? 'Cambiare per Vivere',
+          icon: '/jarvis-icon-192.png',
+        });
         if (reminder.repeat_rule === 'daily' || reminder.repeat_rule === 'weekly') {
           const next = new Date(reminder.remind_at);
           next.setDate(next.getDate() + (reminder.repeat_rule === 'daily' ? 1 : 7));

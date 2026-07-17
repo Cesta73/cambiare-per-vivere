@@ -23,7 +23,6 @@ import {
   Moon,
   Route,
   Salad,
-  Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -118,7 +117,7 @@ function DesktopRightRail() {
         aria-label="Apri Jarvis Core"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={18} className="text-amber-600" />
+          <BrandMark className="w-9 h-9 flex-shrink-0" title="Jarvis" />
           <h2 className="font-display text-xl text-petrol-900">Jarvis 3.0</h2>
         </div>
         <p className="text-sm text-warm-gray-600 leading-relaxed">

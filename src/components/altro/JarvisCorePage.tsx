@@ -1,9 +1,10 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { ArrowLeft, Loader2, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import {
   isJarvisCoreConfigured,
   sendJarvisCoreMessage,
 } from '../../lib/jarvis-core';
+import { BrandMark } from '../brand/BrandMark';
 
 interface JarvisCorePageProps {
   onBack: () => void;
@@ -64,6 +65,7 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
         >
           <ArrowLeft size={20} />
         </button>
+        <BrandMark className="w-11 h-11 flex-shrink-0" title="Jarvis Core" />
         <div>
           <p className="eyebrow text-sage-600">Jarvis 3.0</p>
           <h1 className="section-title leading-tight">Jarvis Core</h1>
@@ -80,7 +82,7 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
         <div className="flex-1 space-y-3 overflow-y-auto pr-1">
           {turns.length === 0 ? (
             <div className="h-full min-h-[16rem] flex flex-col items-center justify-center text-center text-warm-gray-400">
-              <Sparkles size={28} className="mb-3 text-amber-500" />
+              <BrandMark className="w-16 h-16 mb-4" title="Jarvis" />
               <p className="text-sm">Jarvis è in ascolto.</p>
             </div>
           ) : (
