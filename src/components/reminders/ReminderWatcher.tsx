@@ -23,7 +23,7 @@ export function ReminderWatcher() {
 
       for (const reminder of data ?? []) {
         new Notification(reminder.title, {
-          body: reminder.notes ?? 'Cambiare per Vivere',
+          body: reminder.notes ?? 'JARVIS',
           icon: '/jarvis-icon-192.png',
         });
         if (reminder.repeat_rule === 'daily' || reminder.repeat_rule === 'weekly') {

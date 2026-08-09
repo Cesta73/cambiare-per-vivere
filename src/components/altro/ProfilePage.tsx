@@ -58,7 +58,7 @@ export function ProfilePage({ onBack }: Props) {
     const data = {
       profile,
       exportedAt: new Date().toISOString(),
-      note: 'Esportazione dati personali da Cambiare per Vivere',
+      note: 'Esportazione dati personali da JARVIS',
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

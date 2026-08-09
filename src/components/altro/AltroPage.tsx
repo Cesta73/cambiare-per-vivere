@@ -28,7 +28,7 @@ export function AltroPage() {
     {
       id: 'jarvis-core' as const,
       icon: Leaf,
-      label: 'Jarvis Core',
+      label: 'Parla con Jarvis',
       description: 'Conversazione diretta con Jarvis',
       color: 'bg-petrol-50 text-petrol-700',
     },

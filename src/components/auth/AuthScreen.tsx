@@ -31,10 +31,9 @@ export function AuthScreen() {
     <div className="min-h-screen auth-backdrop flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-7">
-          <BrandMark className="w-24 h-24 text-mineral mx-auto mb-5" title="Cambiare per Vivere" />
-          <p className="eyebrow text-amber-300 mb-2">Il tuo spazio di orientamento</p>
-          <h1 className="font-display text-4xl text-cream-50 tracking-tight">Cambiare per Vivere</h1>
-          <p className="text-sage-200 mt-2 text-sm">Presenza, direzione, passi concreti.</p>
+          <BrandMark className="w-24 h-24 mx-auto mb-5" title="Jarvis" />
+          <h1 className="jarvis-wordmark text-xl">JARVIS</h1>
+          <p className="jarvis-muted mt-3 text-sm">Presenza, direzione, passi concreti.</p>
         </div>
 
         <div className="auth-card">

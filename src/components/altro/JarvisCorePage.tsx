@@ -49,7 +49,7 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
         { id: `${Date.now()}-jarvis`, role: 'jarvis', text: response.answer },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Jarvis Core non disponibile.');
+      setError(err instanceof Error ? err.message : 'Jarvis non disponibile.');
     } finally {
       setIsSending(false);
     }
@@ -65,16 +65,16 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
         >
           <ArrowLeft size={20} />
         </button>
-        <BrandMark className="w-11 h-11 flex-shrink-0" title="Jarvis Core" />
+        <BrandMark className="w-11 h-11 flex-shrink-0" title="Jarvis" />
         <div>
-          <p className="eyebrow text-sage-600">Jarvis 3.0</p>
-          <h1 className="section-title leading-tight">Jarvis Core</h1>
+          <p className="eyebrow text-sage-600">Presenza</p>
+          <h1 className="section-title leading-tight">JARVIS</h1>
         </div>
       </div>
 
       {!configured && (
         <div className="card bg-amber-50 border-amber-200 text-sm text-amber-800">
-          Jarvis Core non è configurato in questa build.
+          Jarvis non è configurato in questa build.
         </div>
       )}
 

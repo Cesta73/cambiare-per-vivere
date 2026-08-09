@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jarvis 2.0 — Home concept</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #153e45;
+      --ink-deep: #0b3038;
+      --petrol: #1d606a;
+      --sage: #739987;
+      --gold: #d2aa58;
+      --gold-soft: #f2dfaf;
+      --paper: #f8f6ef;
+      --mist: #edf1ed;
+      --line: rgba(19, 62, 69, .1);
+      --shadow: 0 18px 45px rgba(23, 53, 49, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "DM Sans", sans-serif;
+      color: #253b3a;
+      background:
+        radial-gradient(circle at 8% 5%, rgba(210,170,88,.16), transparent 28rem),
+        radial-gradient(circle at 90% 36%, rgba(29,96,106,.11), transparent 32rem),
+        var(--mist);
+    }
+    button { font: inherit; }
+    .display { font-family: "Marcellus", serif; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 246px minmax(0, 1fr) 320px; }
+
+    .sidebar {
+      height: 100vh; position: sticky; top: 0; padding: 24px 18px;
+      background: linear-gradient(165deg, #123f48 0%, #0b3038 72%);
+      color: white; border-right: 1px solid rgba(242,223,175,.13);
+      display: flex; flex-direction: column;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 28px; }
+    .brand img { width: 46px; height: 46px; border-radius: 50%; box-shadow: 0 0 0 5px rgba(242,223,175,.08); }
+    .brand-title { font-size: 18px; letter-spacing: .02em; }
+    .brand-sub { font-size: 10px; text-transform: uppercase; color: #a7c5bb; letter-spacing: .16em; margin-top: 3px; }
+    .nav-label { padding: 0 12px; color: #7eaaa0; font-size: 10px; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; margin: 7px 0; }
+    .nav { display: grid; gap: 5px; }
+    .nav button {
+      border: 0; background: transparent; color: #bcd2cb; display: flex; align-items: center;
+      gap: 12px; padding: 11px 13px; border-radius: 14px; cursor: pointer; text-align: left;
+    }
+    .nav button.active { color: #fff1c9; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(242,223,175,.1); }
+    .nav .ico, .bottom-nav .ico { width: 22px; text-align: center; font-size: 17px; }
+    .sidebar-status {
+      margin-top: auto; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px; padding: 14px;
+    }
+    .status-line { display: flex; gap: 8px; align-items: center; color: #d7e7e1; font-size: 12px; }
+    .status-dot { width: 8px; height: 8px; background: #7cc99f; border-radius: 50%; box-shadow: 0 0 0 4px rgba(124,201,159,.12); }
+    .status-copy { color: #91b5ab; font-size: 11px; margin-top: 7px; line-height: 1.45; }
+
+    main { padding: 28px 30px 42px; min-width: 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 26px; }
+    .date { color: #66807b; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    h1 { margin: 5px 0 0; color: var(--ink-deep); font-size: clamp(28px, 3vw, 40px); font-weight: 400; }
+    .profile { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.8); padding: 7px 10px 7px 8px; border-radius: 999px; }
+    .avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: white; background: linear-gradient(145deg, var(--petrol), var(--ink-deep)); font-weight: 700; }
+    .profile span { color: var(--ink); font-size: 13px; font-weight: 600; }
+
+    .jarvis-card {
+      position: relative; overflow: hidden; min-height: 245px; padding: 26px;
+      color: white; border-radius: 30px;
+      background:
+        radial-gradient(circle at 87% 12%, rgba(210,170,88,.28), transparent 34%),
+        linear-gradient(145deg, #1b5a64, #0c343c 73%);
+      box-shadow: 0 26px 58px rgba(13,53,64,.22); border: 1px solid rgba(242,223,175,.2);
+    }
+    .jarvis-card:after {
+      content: ""; position: absolute; width: 290px; height: 290px; right: -128px; bottom: -180px;
+      border: 1px solid rgba(242,223,175,.15); border-radius: 50%; box-shadow: 0 0 0 45px rgba(242,223,175,.035), 0 0 0 90px rgba(242,223,175,.02);
+    }
+    .jarvis-kicker { display: flex; align-items: center; gap: 8px; color: var(--gold-soft); font-size: 11px; text-transform: uppercase; letter-spacing: .15em; font-weight: 700; }
+    .jarvis-kicker:before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #8ed0ab; box-shadow: 0 0 0 5px rgba(142,208,171,.1); }
+    .jarvis-card h2 { font-size: clamp(24px, 3vw, 35px); line-height: 1.15; font-weight: 400; max-width: 660px; margin: 17px 0 9px; }
+    .jarvis-card p { color: #c8dcd7; max-width: 650px; margin: 0 0 22px; font-size: 14px; line-height: 1.55; }
+    .jarvis-actions { display: flex; gap: 9px; flex-wrap: wrap; position: relative; z-index: 1; }
+    .primary, .secondary { border: 0; padding: 11px 15px; border-radius: 13px; font-weight: 700; font-size: 12px; cursor: pointer; }
+    .primary { color: #173d42; background: linear-gradient(145deg, #f0d99e, #cda047); box-shadow: 0 8px 20px rgba(210,170,88,.2); }
+    .secondary { color: #e5efec; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.1); }
+
+    .section-head { display: flex; align-items: end; justify-content: space-between; margin: 28px 2px 12px; }
+    .section-head h3 { color: var(--ink); font-weight: 400; font-size: 21px; margin: 0; }
+    .section-head a { color: #5f7a74; font-size: 12px; text-decoration: none; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .metric, .agent {
+      background: rgba(255,255,255,.68); border: 1px solid rgba(255,255,255,.9); border-radius: 21px;
+      box-shadow: var(--shadow); backdrop-filter: blur(14px);
+    }
+    .metric { padding: 16px; min-height: 120px; }
+    .metric-top { display: flex; justify-content: space-between; color: #638079; font-size: 11px; font-weight: 600; }
+    .metric-icon { font-size: 18px; }
+    .metric-value { color: var(--ink-deep); font-size: 25px; margin-top: 17px; }
+    .metric-value small { font-family: "DM Sans"; font-size: 11px; color: #789087; }
+    .bar { height: 4px; border-radius: 99px; background: #dce7e1; margin-top: 11px; overflow: hidden; }
+    .bar i { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--sage), var(--petrol)); }
+    .metric-note { color: #718981; font-size: 10px; margin-top: 9px; }
+
+    .agents { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .agent { padding: 17px; min-height: 154px; position: relative; overflow: hidden; }
+    .agent:after { content: ""; position: absolute; width: 80px; height: 80px; right: -30px; top: -35px; border-radius: 50%; background: var(--wash); }
+    .agent-head { display: flex; align-items: center; gap: 10px; }
+    .agent-icon { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: var(--wash); }
+    .agent-name { color: var(--ink); font-weight: 700; font-size: 13px; }
+    .agent-role { color: #82968f; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+    .agent p { color: #5e746e; font-size: 11px; line-height: 1.48; margin: 16px 0 0; }
+    .agent strong { color: var(--ink); }
+
+    aside { height: 100vh; position: sticky; top: 0; padding: 28px 24px 28px 0; overflow: auto; }
+    .aside-card { background: rgba(248,246,239,.82); border: 1px solid rgba(255,255,255,.9); border-radius: 25px; padding: 19px; box-shadow: var(--shadow); margin-bottom: 14px; }
+    .aside-title { color: var(--ink); font-size: 18px; margin: 0 0 16px; font-weight: 400; }
+    .timeline { display: grid; gap: 3px; }
+    .event { display: grid; grid-template-columns: 45px 12px 1fr; gap: 9px; min-height: 58px; }
+    .event-time { color: #7a8f89; font-size: 11px; padding-top: 2px; }
+    .event-mark { position: relative; }
+    .event-mark:before { content: ""; width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 4px; left: 1px; background: var(--gold); box-shadow: 0 0 0 4px rgba(210,170,88,.13); }
+    .event:not(:last-child) .event-mark:after { content: ""; width: 1px; position: absolute; left: 5px; top: 17px; bottom: -4px; background: #dbe3df; }
+    .event-name { color: #284846; font-size: 12px; font-weight: 700; }
+    .event-detail { color: #7d928c; font-size: 10px; margin-top: 3px; }
+    .medicine { background: #fff8e8; border-color: rgba(210,170,88,.22); }
+    .medicine-row { display: flex; align-items: flex-start; gap: 11px; }
+    .medicine-icon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 13px; background: #f3dfad; }
+    .medicine h4 { margin: 0; color: #554321; font-size: 12px; }
+    .medicine p { margin: 5px 0 0; color: #8c784e; font-size: 10px; line-height: 1.4; }
+    .santiago { color: white; background: linear-gradient(145deg, #467465, #234e48); border-color: rgba(255,255,255,.08); }
+    .santiago .aside-title { color: white; margin-bottom: 7px; }
+    .santiago p { color: #bad0c8; font-size: 11px; line-height: 1.5; margin: 0 0 14px; }
+    .santiago .bar { background: rgba(255,255,255,.13); }
+    .santiago .bar i { background: linear-gradient(90deg, #d2aa58, #f1dba2); }
+    .santiago-foot { display: flex; justify-content: space-between; margin-top: 9px; color: #d7e4df; font-size: 10px; }
+
+    .bottom-nav { display: none; }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 220px minmax(0, 1fr); }
+      aside { display: none; }
+    }
+
+    @media (max-width: 720px) {
+      body { background: var(--mist); }
+      .app { display: block; }
+      .sidebar { display: none; }
+      main { padding: 20px 16px 102px; }
+      .topbar { margin-bottom: 18px; }
+      .date { font-size: 10px; }
+      h1 { font-size: 29px; margin-top: 3px; }
+      .profile { width: 38px; height: 38px; padding: 3px; }
+      .profile span { display: none; }
+      .avatar { width: 30px; height: 30px; }
+      .jarvis-card { min-height: 274px; padding: 21px; border-radius: 27px; }
+      .jarvis-card h2 { font-size: 26px; margin-top: 16px; }
+      .jarvis-card p { font-size: 13px; margin-bottom: 18px; }
+      .jarvis-actions button { flex: 1; }
+      .section-head { margin-top: 24px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric { min-height: 112px; }
+      .agents { display: flex; overflow-x: auto; margin: 0 -16px; padding: 0 16px 8px; scroll-snap-type: x mandatory; }
+      .agent { min-width: 252px; scroll-snap-align: start; }
+      .bottom-nav {
+        display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; z-index: 5; left: 12px; right: 12px; bottom: 10px;
+        padding: 8px 5px calc(8px + env(safe-area-inset-bottom)); border-radius: 23px;
+        background: rgba(10,46,54,.95); border: 1px solid rgba(242,223,175,.16); box-shadow: 0 20px 42px rgba(9,37,45,.35); backdrop-filter: blur(18px);
+      }
+      .bottom-nav button { border: 0; background: none; color: #9ebbb2; display: grid; place-items: center; gap: 2px; font-size: 9px; padding: 3px 0; }
+      .bottom-nav button.active { color: #f0d99e; }
+      .bottom-nav .ico { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="brand">
+        <img src="../public/jarvis-emblem.png" alt="Emblema Jarvis">
+        <div><div class="brand-title display">Jarvis</div><div class="brand-sub">Cambiare per vivere</div></div>
+      </div>
+      <div class="nav-label">Il tuo spazio</div>
+      <div class="nav">
+        <button class="active"><span class="ico">⌂</span>Oggi</button>
+        <button><span class="ico">✦</span>Jarvis</button>
+        <button><span class="ico">◎</span>Percorsi</button>
+        <button><span class="ico">□</span>Agenda</button>
+      </div>
+      <div class="nav-label" style="margin-top:24px">Riflessione</div>
+      <div class="nav">
+        <button><span class="ico">◌</span>Diario</button>
+        <button><span class="ico">↗</span>Progressi</button>
+        <button><span class="ico">☾</span>Il mio centro</button>
+      </div>
+      <div class="sidebar-status">
+        <div class="status-line"><i class="status-dot"></i>Jarvis è presente</div>
+        <div class="status-copy">I tuoi specialisti hanno aggiornato la giornata.</div>
+      </div>
+    </nav>
+
+    <main>
+      <header class="topbar">
+        <div><div class="date">Lunedì 29 giugno · Venezia</div><h1 class="display">Buongiorno, Gianluca.</h1></div>
+        <div class="profile"><div class="avatar">G</div><span>Il mio profilo</span></div>
+      </header>
+
+      <section class="jarvis-card">
+        <div class="jarvis-kicker">La priorità di oggi</div>
+        <h2 class="display">Hai una giornata piena. Proteggiamo energia e continuità.</h2>
+        <p>Ti propongo una camminata tranquilla di 25 minuti alle 18:30. Prima, porta l’acqua a 1,5 litri: sei un po’ indietro rispetto al tuo ritmo abituale.</p>
+        <div class="jarvis-actions"><button class="primary">Va bene, organizzala</button><button class="secondary">Parliamone con Jarvis</button></div>
+      </section>
+
+      <div class="section-head"><h3 class="display">La giornata in sintesi</h3><a href="#">Registra qualcosa +</a></div>
+      <section class="metrics">
+        <article class="metric"><div class="metric-top"><span>Acqua</span><span class="metric-icon">◒</span></div><div class="metric-value display">0,8 <small>/ 2 L</small></div><div class="bar"><i style="width:40%"></i></div><div class="metric-note">Un bicchiere adesso ti rimette in ritmo</div></article>
+        <article class="metric"><div class="metric-top"><span>Movimento</span><span class="metric-icon">↟</span></div><div class="metric-value display">3.240 <small>passi</small></div><div class="bar"><i style="width:48%"></i></div><div class="metric-note">25 minuti proposti per questa sera</div></article>
+        <article class="metric"><div class="metric-top"><span>Alimentazione</span><span class="metric-icon">◇</span></div><div class="metric-value display">In linea</div><div class="bar"><i style="width:72%"></i></div><div class="metric-note">Pranzo equilibrato e ben registrato</div></article>
+        <article class="metric"><div class="metric-top"><span>Terapie</span><span class="metric-icon">✚</span></div><div class="metric-value display">2 <small>/ 3</small></div><div class="bar"><i style="width:66%"></i></div><div class="metric-note">Prossima assunzione alle 21:00</div></article>
+      </section>
+
+      <div class="section-head"><h3 class="display">I tuoi specialisti</h3><a href="#">Apri i percorsi</a></div>
+      <section class="agents">
+        <article class="agent" style="--wash:#e9f1e8"><div class="agent-head"><div class="agent-icon">◇</div><div><div class="agent-name">Alimentazione</div><div class="agent-role">Guida quotidiana</div></div></div><p><strong>Giornata coerente.</strong> A cena valorizziamo verdure e una fonte proteica semplice.</p></article>
+        <article class="agent" style="--wash:#e5eff1"><div class="agent-head"><div class="agent-icon">↟</div><div><div class="agent-name">Allenatore</div><div class="agent-role">Verso Santiago</div></div></div><p><strong>Carico adatto.</strong> Oggi cammino dolce; domani Buddifyt total body principianti.</p></article>
+        <article class="agent" style="--wash:#f5ead2"><div class="agent-head"><div class="agent-icon">✚</div><div><div class="agent-name">Salute</div><div class="agent-role">Terapie e scorte</div></div></div><p><strong>Tutto sotto controllo.</strong> Lucen disponibile per altri 12 giorni; richiesta tra 5 giorni.</p></article>
+      </section>
+    </main>
+
+    <aside>
+      <section class="aside-card">
+        <h3 class="aside-title display">Prossimi momenti</h3>
+        <div class="timeline">
+          <div class="event"><div class="event-time">13:00</div><div class="event-mark"></div><div><div class="event-name">Pranzo</div><div class="event-detail">Registrazione rapida dopo il pasto</div></div></div>
+          <div class="event"><div class="event-time">18:30</div><div class="event-mark"></div><div><div class="event-name">Camminata · 25 min</div><div class="event-detail">Passo tranquillo, terreno piano</div></div></div>
+          <div class="event"><div class="event-time">21:00</div><div class="event-mark"></div><div><div class="event-name">Terapia serale</div><div class="event-detail">Promemoria già predisposto</div></div></div>
+        </div>
+      </section>
+      <section class="aside-card medicine">
+        <div class="medicine-row"><div class="medicine-icon">✚</div><div><h4>Scorta da tenere d’occhio</h4><p>Lucen terminerà tra 12 giorni. Jarvis ti proporrà la richiesta al medico con il giusto anticipo.</p></div></div>
+      </section>
+      <section class="aside-card santiago">
+        <h3 class="aside-title display">Verso Santiago</h3>
+        <p>La continuità di questa settimana sta costruendo il cammino di aprile 2027.</p>
+        <div class="bar"><i style="width:18%"></i></div>
+        <div class="santiago-foot"><span>Fondamenta</span><span>18%</span></div>
+      </section>
+    </aside>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="active"><span class="ico">⌂</span><span>Oggi</span></button>
+    <button><span class="ico">✦</span><span>Jarvis</span></button>
+    <button><span class="ico">◎</span><span>Percorsi</span></button>
+    <button><span class="ico">□</span><span>Agenda</span></button>
+    <button><span class="ico">•••</span><span>Altro</span></button>
+  </nav>
+</body>
+</html>

@@ -1,22 +1,22 @@
 {
-  "name": "Cambiare per Vivere",
-  "short_name": "Jarvis",
-  "description": "Cabina di regia personale collegata a Jarvis 3.0",
+  "name": "JARVIS",
+  "short_name": "JARVIS",
+  "description": "Il tuo compagno di cammino.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#101820",
-  "theme_color": "#101820",
+  "background_color": "#f4f0e7",
+  "theme_color": "#b08a43",
   "icons": [
     {
-      "src": "/jarvis-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/jarvis-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/jarvis-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/jarvis-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]

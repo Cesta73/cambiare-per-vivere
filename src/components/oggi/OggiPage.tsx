@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle, BookOpen, CalendarDays, Check, ChevronRight, Database,
+  AlertCircle, Archive, BookOpen, CalendarDays, Check, ChevronRight, Database,
   Droplets, Dumbbell, Heart, Pill, Scale, Sparkles, Target, Utensils,
-  Salad,
+  Salad, MessageCircle, Home, Route, TrendingUp, Moon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -165,6 +165,17 @@ export function OggiPage() {
     { id: 'journal', label: 'Diario', Icon: BookOpen, value: journal ? 'Aggiornato oggi' : 'Ancora da compilare', tone: journal ? 'complete' : 'normal', action: () => setActiveTab('diario') },
     { id: 'agenda', label: 'Agenda', Icon: CalendarDays, value: nextAppointmentLabel, action: () => setActiveTab('agenda') },
   ];
+  const featureCards: CommandRow[] = [
+    { id: 'talk', label: 'Parla con Jarvis', value: 'Una sola voce, sempre presente', Icon: MessageCircle, action: openJarvisCore },
+    { id: 'today', label: 'Oggi', value: 'La tua giornata essenziale', Icon: Home, action: () => setActiveTab('oggi') },
+    { id: 'nutrition', label: 'Nutrizione', value: 'Piano e scelte quotidiane', Icon: Salad, action: () => setActiveTab('nutrizione') },
+    { id: 'pantry', label: 'Cambusa', value: 'Scorte, spesa e scadenze', Icon: Archive, action: () => setActiveTab('cambusa') },
+    { id: 'journal', label: 'Diario', value: 'Riflessioni e continuità', Icon: BookOpen, action: () => setActiveTab('diario') },
+    { id: 'agenda', label: 'Agenda', value: 'Impegni, turni e terapie', Icon: CalendarDays, action: () => setActiveTab('agenda') },
+    { id: 'walk', label: 'Cammino', value: 'Verso Santiago 2027', Icon: Route, action: () => setActiveTab('cammino') },
+    { id: 'progress', label: 'Progressi', value: 'Andamento e segnali', Icon: TrendingUp, action: () => setActiveTab('progressi') },
+    { id: 'dharma', label: 'Dharma', value: 'Pratica e presenza', Icon: Moon, action: () => setActiveTab('dharma') },
+  ];
 
   async function savePriority() {
     if (!user || !priorityText.trim()) { setModal(null); return; }
@@ -195,42 +206,63 @@ export function OggiPage() {
   }
 
   return (
-    <div className="command-page">
-      <header className="command-header">
-        <div className="command-brand-line">
-          <BrandMark className="w-11 h-11 text-mineral" title="Jarvis" />
-          <div className="min-w-0">
-            <p className="command-kicker">Cambiare per Vivere · Jarvis</p>
-            <h1>{getGreeting(profile?.display_name ?? null)}</h1>
-          </div>
-          <button type="button" className="command-status" onClick={() => setActiveTab('agenda')}>
-            {shift ? shift.custom_label || SHIFT_LABELS[shift.shift_type] : 'Giornata'}
-          </button>
+    <div className="jarvis-home">
+      <header className="jarvis-home-header">
+        <div className="jarvis-home-brand">
+          <BrandMark className="w-12 h-12" title="Jarvis" />
+          <span className="jarvis-wordmark">JARVIS</span>
         </div>
-        <div className="command-date-line">
-          <span>{formatDateLong(today)}</span>
-          {dharmaDay && <span>M{dharmaDay.tibetanMonth} · G{dharmaDay.tibetanDay} · {qualityLabel(dharmaDay.quality)}</span>}
-        </div>
+        <p className="jarvis-home-greeting">{getGreeting(profile?.display_name ?? null).replace(',', '').replace('!', '')}.</p>
+        <h1>Come posso aiutarti oggi?</h1>
+        <p className="jarvis-home-date">{formatDateLong(today)}</p>
       </header>
 
-      <section className="command-list" aria-label="Cabina di regia della giornata">
-        {commands.map(({ id, label, value, Icon, tone = 'normal', action }) => (
-          <button key={id} type="button" onClick={action} className={`command-row command-row-${tone}`}>
-            <span className="command-row-icon"><Icon size={20} strokeWidth={1.8} /></span>
-            <span className="command-row-copy">
-              <span className="command-row-label">{label}</span>
-              <span className="command-row-value">{value}</span>
+      <button type="button" onClick={openJarvisCore} className="jarvis-command-button">
+        <MessageCircle size={20} strokeWidth={1.5} />
+        <span>Parla con Jarvis</span>
+        <ChevronRight size={18} strokeWidth={1.5} />
+      </button>
+
+      <section className="jarvis-feature-grid" aria-label="Funzioni Jarvis">
+        {featureCards.map(({ id, label, value, Icon, action }) => (
+          <button key={id} type="button" onClick={action} className="jarvis-feature-card">
+            <Icon size={21} strokeWidth={1.4} />
+            <span>
+              <strong>{label}</strong>
+              <small>{value}</small>
             </span>
-            <ChevronRight size={18} className="command-chevron" />
+            <ChevronRight size={16} strokeWidth={1.4} />
           </button>
         ))}
       </section>
 
-      <button type="button" onClick={openJarvisCore} className="jarvis-command-button">
-        <BrandMark className="w-8 h-8" title="Jarvis" />
-        <span>Parla con Jarvis</span>
-        <ChevronRight size={19} />
-      </button>
+      <section className="jarvis-today">
+        <div className="jarvis-section-heading">
+          <div>
+            <p>Presenza quotidiana</p>
+            <h2>Il tuo oggi</h2>
+          </div>
+          <button type="button" onClick={() => setActiveTab('agenda')}>
+            {shift ? shift.custom_label || SHIFT_LABELS[shift.shift_type] : 'Giornata'}
+          </button>
+        </div>
+        <div className="jarvis-today-meta">
+          <span>{formatDateLong(today)}</span>
+          {dharmaDay && <span>M{dharmaDay.tibetanMonth} · G{dharmaDay.tibetanDay} · {qualityLabel(dharmaDay.quality)}</span>}
+        </div>
+        <div className="command-list" aria-label="Guida della giornata">
+          {commands.map(({ id, label, value, Icon, tone = 'normal', action }) => (
+            <button key={id} type="button" onClick={action} className={`command-row command-row-${tone}`}>
+              <span className="command-row-icon"><Icon size={19} strokeWidth={1.45} /></span>
+              <span className="command-row-copy">
+                <span className="command-row-label">{label}</span>
+                <span className="command-row-value">{value}</span>
+              </span>
+              <ChevronRight size={17} strokeWidth={1.4} className="command-chevron" />
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="command-tools" aria-label="Registrazioni rapide">
         <button onClick={() => setModal('mood')}><Heart size={18} /><span>Come sto</span></button>

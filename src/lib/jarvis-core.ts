@@ -94,7 +94,7 @@ export async function sendJarvisCoreMessage(
   messageId?: string,
 ): Promise<JarvisCoreMessageResponse> {
   if (!jarvisCoreUrl) {
-    throw new Error('Jarvis Core non configurato.');
+    throw new Error('Jarvis non configurato.');
   }
 
   const { data, error } = await supabase.auth.getSession();
@@ -286,7 +286,7 @@ export async function lookupPantryBarcode(code: string) {
 }
 
 async function getAccessToken() {
-  if (!jarvisCoreUrl) throw new Error('Jarvis Core non configurato.');
+  if (!jarvisCoreUrl) throw new Error('Jarvis non configurato.');
   const { data, error } = await supabase.auth.getSession();
   if (error) throw new Error(error.message);
   const accessToken = data.session?.access_token;
@@ -295,10 +295,10 @@ async function getAccessToken() {
 }
 
 function coreErrorLabel(error: string | undefined, status: number) {
-  if (error === 'unauthorized') return 'Accesso a Jarvis Core non autorizzato.';
-  if (error === 'core_api_not_configured') return 'Jarvis Core non configurato in produzione.';
+  if (error === 'unauthorized') return 'Accesso a Jarvis non autorizzato.';
+  if (error === 'core_api_not_configured') return 'Jarvis non configurato in produzione.';
   if (error === 'missing_text') return 'Messaggio vuoto.';
   if (error === 'text_too_long') return 'Messaggio troppo lungo.';
   if (error === 'nutrition_plan_not_available') return 'Piano nutrizionale non disponibile.';
-  return `Jarvis Core non disponibile (${status}).`;
+  return `Jarvis non disponibile (${status}).`;
 }

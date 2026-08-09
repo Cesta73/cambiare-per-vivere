@@ -135,7 +135,7 @@ export function ReportPage({ onBack }: Props) {
       `Generato il: ${new Date(reportData.generated_at).toLocaleDateString('it-IT')}`,
       reportData.nutritionPlan ? `Piano alimentare di riferimento: ${reportData.nutritionPlan.author}, ${formatDate(reportData.nutritionPlan.issued_on)}` : '',
       ``,
-      `NOTA: Questi dati sono stati generati dall'applicazione personale "Cambiare per Vivere".`,
+      'NOTA: Questi dati sono stati generati dall’applicazione personale JARVIS.',
       `Sono dati di auto-monitoraggio e non costituiscono documentazione clinica.`,
       ``,
     ];
