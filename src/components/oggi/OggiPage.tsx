@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle, Archive, BookOpen, CalendarDays, Check, ChevronRight, Database,
+  Archive, BookOpen, CalendarDays, Check, ChevronRight, Database,
   Droplets, Dumbbell, Heart, Pill, Scale, Sparkles, Target, Utensils,
-  Salad, MessageCircle, Home, Route, TrendingUp, Moon,
+  Salad, Home, Loader2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -24,6 +24,7 @@ import { QuickMoodModal } from './QuickMoodModal';
 import { QuickWaterModal } from './QuickWaterModal';
 import { QuickWeightModal } from './QuickWeightModal';
 import { JarvisCorePage } from '../altro/JarvisCorePage';
+import { sendJarvisCoreMessage } from '../../lib/jarvis-core';
 
 const today = todayISO();
 const dayStart = new Date(`${today}T00:00:00`).toISOString();
@@ -63,7 +64,7 @@ function medicationDueToday(item: MedicationReminder) {
 
 export function OggiPage() {
   const {
-    profile, user, showToast, setActiveTab, dataVersion, openJarvisCore,
+    profile, user, showToast, setActiveTab, dataVersion,
   } = useApp();
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [habits, setHabits] = useState<HabitDefinition[]>([]);
@@ -79,6 +80,9 @@ export function OggiPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalName>(null);
   const [priorityText, setPriorityText] = useState('');
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [briefingError, setBriefingError] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -117,6 +121,25 @@ export function OggiPage() {
 
   useEffect(() => { void loadData(); }, [loadData, dataVersion]);
 
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setBriefingLoading(true);
+    setBriefingError(false);
+    void sendJarvisCoreMessage(
+      'Come sono messo oggi?',
+      `web-home-briefing-${today}`,
+      `web-home-briefing-${user.id}-${today}`,
+    ).then(response => {
+      if (active) setBriefing(response.answer.trim() || null);
+    }).catch(() => {
+      if (active) setBriefingError(true);
+    }).finally(() => {
+      if (active) setBriefingLoading(false);
+    });
+    return () => { active = false; };
+  }, [user]);
+
   const dueMedications = useMemo(() => medications.filter(medicationDueToday), [medications]);
   const takenMedicationIds = new Set(medicationLogs.filter(log => log.taken).map(log => log.reminder_id));
   const takenMedicationNames = medicationLogs.filter(log => log.taken).map(log => normalizeMedicationName(log.reminder_name));
@@ -128,7 +151,6 @@ export function OggiPage() {
   const completedHabits = habits.filter(habit => habitLogs.some(log => log.habit_id === habit.id && log.completed));
   const waterMl = checkin?.water_ml ?? 0;
   const movementMinutes = activities.reduce((sum, item) => sum + Number(item.duration_minutes || 0), 0);
-  const attentionCount = pendingMedications.length + reminders.length;
   const dharmaDay = getTibetanCalendarDay(today);
 
   const nextAppointmentLabel = nextAppointment
@@ -149,11 +171,6 @@ export function OggiPage() {
       tone: checkin?.top_priority ? 'complete' : 'attention',
       action: () => { setPriorityText(checkin?.top_priority || ''); setModal('priority'); },
     },
-    ...(attentionCount > 0 ? [{
-      id: 'attention', label: 'Da fare ora', Icon: AlertCircle,
-      value: `${attentionCount} ${attentionCount === 1 ? 'elemento richiede' : 'elementi richiedono'} attenzione`,
-      tone: 'attention' as const, action: () => setActiveTab('agenda'),
-    }] : []),
     {
       id: 'therapy', label: 'Terapia', Icon: Pill,
       value: pendingMedications.length ? `${pendingMedications.length} da confermare` : `${dueMedications.length} previste · in ordine`,
@@ -214,6 +231,23 @@ export function OggiPage() {
         <h1>Come posso aiutarti oggi?</h1>
         <p className="jarvis-home-date">{formatDateLong(today)}</p>
       </header>
+
+      <section className="card jarvis-briefing" aria-label="Il punto di Jarvis" aria-live="polite">
+        <div className="jarvis-section-heading">
+          <div>
+            <p>Briefing e attenzione</p>
+            <h2>Il punto di Jarvis</h2>
+          </div>
+          {briefingLoading && <Loader2 size={18} className="animate-spin text-sage-600" aria-label="Aggiornamento in corso" />}
+        </div>
+        {briefing && (
+          <div className="mt-3 space-y-2 text-sm leading-relaxed text-warm-gray-700">
+            {briefing.split(/\n+/).filter(Boolean).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 16)}`}>{paragraph}</p>)}
+          </div>
+        )}
+        {!briefingLoading && !briefing && !briefingError && <p className="mt-3 text-sm text-warm-gray-500">Nulla richiede particolare attenzione.</p>}
+        {briefingError && <p className="mt-3 text-sm text-warm-gray-500">Non riesco a preparare il punto della giornata in questo momento.</p>}
+      </section>
 
       <JarvisCorePage embedded />
 
