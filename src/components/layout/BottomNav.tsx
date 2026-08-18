@@ -1,12 +1,12 @@
-import { Home, CalendarDays, BookOpen, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Home, CalendarDays, HeartPulse, MessageCircle, MoreHorizontal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp, type AppTab } from '../../contexts/AppContext';
 
 const NAV_ITEMS: { tab: AppTab; label: string; Icon: LucideIcon }[] = [
   { tab: 'oggi', label: 'Home', Icon: Home },
-  { tab: 'diario', label: 'Diario', Icon: BookOpen },
   { tab: 'agenda', label: 'Agenda', Icon: CalendarDays },
-  { tab: 'altro', label: 'Altro', Icon: MoreHorizontal },
+  { tab: 'salute', label: 'Salute', Icon: HeartPulse },
+  { tab: 'nutrizione', label: 'Altro', Icon: MoreHorizontal },
 ];
 
 export function BottomNav() {

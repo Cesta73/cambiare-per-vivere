@@ -23,6 +23,7 @@ import { QuickMealModal } from './QuickMealModal';
 import { QuickMoodModal } from './QuickMoodModal';
 import { QuickWaterModal } from './QuickWaterModal';
 import { QuickWeightModal } from './QuickWeightModal';
+import { JarvisCorePage } from '../altro/JarvisCorePage';
 
 const today = todayISO();
 const dayStart = new Date(`${today}T00:00:00`).toISOString();
@@ -166,15 +167,12 @@ export function OggiPage() {
     { id: 'agenda', label: 'Agenda', Icon: CalendarDays, value: nextAppointmentLabel, action: () => setActiveTab('agenda') },
   ];
   const featureCards: CommandRow[] = [
-    { id: 'talk', label: 'Parla con Jarvis', value: 'Una sola voce, sempre presente', Icon: MessageCircle, action: openJarvisCore },
-    { id: 'today', label: 'Oggi', value: 'La tua giornata essenziale', Icon: Home, action: () => setActiveTab('oggi') },
     { id: 'nutrition', label: 'Nutrizione', value: 'Piano e scelte quotidiane', Icon: Salad, action: () => setActiveTab('nutrizione') },
     { id: 'pantry', label: 'Cambusa', value: 'Scorte, spesa e scadenze', Icon: Archive, action: () => setActiveTab('cambusa') },
-    { id: 'journal', label: 'Diario', value: 'Riflessioni e continuità', Icon: BookOpen, action: () => setActiveTab('diario') },
     { id: 'agenda', label: 'Agenda', value: 'Impegni, turni e terapie', Icon: CalendarDays, action: () => setActiveTab('agenda') },
-    { id: 'walk', label: 'Cammino', value: 'Verso Santiago 2027', Icon: Route, action: () => setActiveTab('cammino') },
-    { id: 'progress', label: 'Progressi', value: 'Andamento e segnali', Icon: TrendingUp, action: () => setActiveTab('progressi') },
-    { id: 'dharma', label: 'Dharma', value: 'Pratica e presenza', Icon: Moon, action: () => setActiveTab('dharma') },
+    { id: 'health', label: 'Salute', value: 'Terapie e segnali essenziali', Icon: Heart, action: () => setActiveTab('salute') },
+    { id: 'movement', label: 'Movimento', value: 'Attività e progressi', Icon: Dumbbell, action: () => setActiveTab('movimento') },
+    { id: 'family', label: 'Famiglia', value: 'Contesto familiare separato', Icon: Home, action: () => setActiveTab('famiglia') },
   ];
 
   async function savePriority() {
@@ -217,13 +215,9 @@ export function OggiPage() {
         <p className="jarvis-home-date">{formatDateLong(today)}</p>
       </header>
 
-      <button type="button" onClick={openJarvisCore} className="jarvis-command-button">
-        <MessageCircle size={20} strokeWidth={1.5} />
-        <span>Parla con Jarvis</span>
-        <ChevronRight size={18} strokeWidth={1.5} />
-      </button>
+      <JarvisCorePage embedded />
 
-      <section className="jarvis-feature-grid" aria-label="Funzioni Jarvis">
+      <section className="jarvis-feature-grid" aria-label="Viste specializzate">
         {featureCards.map(({ id, label, value, Icon, action }) => (
           <button key={id} type="button" onClick={action} className="jarvis-feature-card">
             <Icon size={21} strokeWidth={1.4} />

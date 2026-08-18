@@ -19,7 +19,7 @@ import type {
   WorkShift,
 } from '../lib/supabase';
 
-export type AppTab = 'oggi' | 'nutrizione' | 'cambusa' | 'diario' | 'agenda' | 'progressi' | 'altro' | 'raw-data' | 'cammino' | 'dharma';
+export type AppTab = 'oggi' | 'nutrizione' | 'cambusa' | 'diario' | 'agenda' | 'salute' | 'movimento' | 'famiglia' | 'progressi' | 'altro' | 'raw-data' | 'cammino' | 'dharma';
 
 interface Toast {
   id: string;
@@ -198,7 +198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const openJarvisCore = useCallback(() => {
-    setActiveTab('altro');
+    setActiveTab('oggi');
     setJarvisCoreRequestId(current => current + 1);
   }, []);
 

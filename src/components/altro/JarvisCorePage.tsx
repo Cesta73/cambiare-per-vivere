@@ -7,7 +7,8 @@ import {
 import { BrandMark } from '../brand/BrandMark';
 
 interface JarvisCorePageProps {
-  onBack: () => void;
+  onBack?: () => void;
+  embedded?: boolean;
 }
 
 interface CoreTurn {
@@ -16,7 +17,7 @@ interface CoreTurn {
   text: string;
 }
 
-export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
+export function JarvisCorePage({ onBack, embedded = false }: JarvisCorePageProps) {
   const [text, setText] = useState('');
   const [turns, setTurns] = useState<CoreTurn[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -56,8 +57,8 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
   }
 
   return (
-    <div className="space-y-4 pb-4">
-      <div className="page-intro flex items-center gap-3">
+    <div className={embedded ? 'jarvis-home-conversation' : 'space-y-4 pb-4'}>
+      {!embedded && <div className="page-intro flex items-center gap-3">
         <button
           onClick={onBack}
           className="w-10 h-10 rounded-xl bg-white border border-warm-gray-200 flex items-center justify-center text-warm-gray-700"
@@ -70,7 +71,7 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
           <p className="eyebrow text-sage-600">Presenza</p>
           <h1 className="section-title leading-tight">JARVIS</h1>
         </div>
-      </div>
+      </div>}
 
       {!configured && (
         <div className="card bg-amber-50 border-amber-200 text-sm text-amber-800">
@@ -78,12 +79,13 @@ export function JarvisCorePage({ onBack }: JarvisCorePageProps) {
         </div>
       )}
 
-      <section className="card min-h-[24rem] flex flex-col">
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+      <section className={`card flex flex-col ${embedded ? 'min-h-[18rem]' : 'min-h-[24rem]'}`}>
+        {embedded && <div className="mb-4"><p className="eyebrow text-sage-700">Conversazione</p><h2 className="text-xl font-semibold text-petrol-950 mt-1">Parla con Jarvis</h2><p className="text-xs text-warm-gray-500 mt-1">La stessa conversazione, sul Web e su Telegram.</p></div>}
+        <div className="flex-1 space-y-3 overflow-y-auto pr-1" aria-live="polite">
           {turns.length === 0 ? (
-            <div className="h-full min-h-[16rem] flex flex-col items-center justify-center text-center text-warm-gray-400">
-              <BrandMark className="w-16 h-16 mb-4" title="Jarvis" />
-              <p className="text-sm">Jarvis è in ascolto.</p>
+            <div className={`h-full flex flex-col items-center justify-center text-center text-warm-gray-400 ${embedded ? 'min-h-[8rem]' : 'min-h-[16rem]'}`}>
+              <BrandMark className="w-12 h-12 mb-3" title="Jarvis" />
+              <p className="text-sm">Sono qui. Di cosa ci occupiamo?</p>
             </div>
           ) : (
             turns.map((turn) => (

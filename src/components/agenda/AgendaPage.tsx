@@ -121,7 +121,7 @@ export function AgendaPage() {
   return (
     <div className="space-y-4 pb-4">
       <div className="page-intro flex items-start justify-between gap-3">
-        <div><p className="eyebrow text-sage-700">Tutto in ordine cronologico</p><h1 className="section-title mt-1">Agenda</h1></div>
+        <div><p className="eyebrow text-sage-700">Caleb · Calendar</p><h1 className="section-title mt-1">Agenda</h1></div>
         <button onClick={openNew} className="btn-primary py-2 px-3"><CalendarPlus size={18} /><span className="hidden sm:inline">Nuovo</span></button>
       </div>
       <div className="page-date-nav">

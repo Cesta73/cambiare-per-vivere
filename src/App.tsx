@@ -23,6 +23,9 @@ import {
   Route,
   Salad,
   TrendingUp,
+  HeartPulse,
+  Dumbbell,
+  Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AppTab } from './contexts/AppContext';
@@ -32,17 +35,18 @@ import { NutritionPlanProvider } from './contexts/NutritionPlanContext';
 import { CambusaApp } from './cambusa/CambusaApp';
 
 const DESKTOP_NAV: { tab: AppTab; label: string; detail: string; Icon: LucideIcon }[] = [
-  { tab: 'oggi', label: 'Oggi', detail: 'Bussola quotidiana', Icon: Home },
+  { tab: 'oggi', label: 'Jarvis', detail: 'Home e conversazione', Icon: Home },
+  { tab: 'agenda', label: 'Agenda', detail: 'Caleb · Calendar', Icon: CalendarDays },
+  { tab: 'salute', label: 'Salute', detail: 'Terapie e diario', Icon: HeartPulse },
   { tab: 'nutrizione', label: 'Nutrizione', detail: 'Piano e scelte quotidiane', Icon: Salad },
   { tab: 'cambusa', label: 'Cambusa', detail: 'Scorte, spesa e scadenze', Icon: Archive },
-  { tab: 'diario', label: 'Diario', detail: 'Riflessioni e continuità', Icon: BookOpen },
-  { tab: 'agenda', label: 'Agenda', detail: 'Impegni, turni e terapie', Icon: CalendarDays },
-  { tab: 'progressi', label: 'Progressi', detail: 'Andamento e segnali', Icon: TrendingUp },
-  { tab: 'cammino', label: 'Cammino', detail: 'Verso Santiago 2027', Icon: Route },
-  { tab: 'dharma', label: 'Dharma', detail: 'Pratica e presenza', Icon: Moon },
-  { tab: 'raw-data', label: 'Dati grezzi', detail: 'Controllo registrazioni', Icon: Database },
-  { tab: 'altro', label: 'Altro', detail: 'Strumenti e impostazioni', Icon: MoreHorizontal },
+  { tab: 'movimento', label: 'Movimento', detail: 'Attività e progressi', Icon: Dumbbell },
+  { tab: 'famiglia', label: 'Famiglia', detail: 'Persone e contesto', Icon: Users },
 ];
+
+function DomainView({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) {
+  return <div className="space-y-4 pb-4"><div className="page-intro"><p className="eyebrow text-sage-700">{eyebrow}</p><h1 className="section-title mt-1">{title}</h1><p className="text-sm text-warm-gray-500 mt-2">{description}</p></div>{children}</div>;
+}
 
 function DesktopSidebar() {
   const { activeTab, setActiveTab, profile } = useApp();
@@ -129,6 +133,9 @@ function AppContent() {
             {activeTab === 'cambusa' && <CambusaApp embedded />}
             {activeTab === 'diario' && <DiarioPage />}
             {activeTab === 'agenda' && <AgendaPage />}
+            {activeTab === 'salute' && <DomainView eyebrow="Cura personale" title="Salute" description="Terapie, diario e segnali restano separati dalle richieste generali."><AgendaPage /><DiarioPage /></DomainView>}
+            {activeTab === 'movimento' && <DomainView eyebrow="Corpo e continuità" title="Movimento" description="Attività, andamento e preparazione fisica in un'unica vista."><ProgressiPage /></DomainView>}
+            {activeTab === 'famiglia' && <DomainView eyebrow="Contesto personale" title="Famiglia" description="Una vista distinta dall'Agenda: Caleb resta esclusivamente Calendar."><div className="card"><p className="text-sm text-warm-gray-600">Per richieste familiari, parla con Jarvis dalla Home: identità e autorizzazioni restano gestite dal backend OpenJarvis.</p></div></DomainView>}
             {activeTab === 'raw-data' && <RawDataPage />}
             {activeTab === 'progressi' && <ProgressiPage />}
             {activeTab === 'altro' && <AltroPage />}
